@@ -295,9 +295,13 @@ async function callUpstream(model, payload, { stream, signal }) {
   }
 }
 
+function modelCandidates(model) {
+  const chain = [model, ...(config.ai.fallbackModels || []), config.ai.fallbackModel].filter(Boolean);
+  return Array.from(new Set(chain));
+}
+
 async function streamUpstream({ model, payload, signal, onDelta }) {
-  const candidates = [model];
-  if (config.ai.fallbackModel && config.ai.fallbackModel !== model) candidates.push(config.ai.fallbackModel);
+  const candidates = modelCandidates(model);
   let lastError;
   for (const candidate of candidates) {
     try {
@@ -467,7 +471,18 @@ async function completeChat({ messages, model, mode, system, temperature, maxTok
   const chosen = resolveModel(model);
   const payload = await buildPayload({ messages, mode, system, temperature, maxTokens });
   try {
-    return { ...(await generateUpstream({ model: chosen, payload, signal })), demo: false };
+    let lastError;
+    for (const candidate of modelCandidates(chosen)) {
+      try {
+        return { ...(await generateUpstream({ model: candidate, payload, signal })), demo: false };
+      } catch (err) {
+        lastError = err;
+        if (signal?.aborted) throw err;
+        const status = err.upstreamStatus;
+        if (!(status === 404 || (status === 400 && /model|not found|unsupported/i.test(err.upstreamDetail || '')))) break;
+      }
+    }
+    throw lastError || new AiError('فشل الاتصال بالنموذج', { code: 'upstream_error' });
   } catch (err) {
     if (config.ai.demoFallback) {
       const text = mockAnswer(messages, mode);

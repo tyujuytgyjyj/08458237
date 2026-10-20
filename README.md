@@ -66,8 +66,9 @@ npm run dev
 | --- | --- |
 | `PORT` | منفذ الخادم (افتراضي 4000) |
 | `GEMINI_API_KEY` | مفتاح Google AI Studio (مفاتيح `AQ.` الجديدة مدعومة على المسار الأصلي) |
-| `GEMINI_MODEL` | النموذج الأساسي (مثال: `gemma-4-31b-it` أو `gemini-2.5-flash`) |
-| `GEMINI_FALLBACK_MODEL` | نموذج بديل يُجرّب تلقائيًا عند 404/عدم دعم النموذج |
+| `GEMINI_MODEL` | نموذج **Blazar 3** (الافتراضي: `gemma-4-31b-it`) |
+| `GEMINI_FAST_MODEL` | نموذج **Photon 3** — هذا هو المتغيّر الذي "يشغّل" فوتون. إن تُرك فارغًا يعود فوتون لنفس نموذج Blazar |
+| `GEMINI_FALLBACK_MODEL` | سلسلة بدائل مفصولة بفاصلة تُجرّب تلقائيًا عند 404/عدم دعم النموذج |
 | `GEMINI_IMAGE_MODEL` | نموذج توليد الصور (مثال: `gemini-2.5-flash-image`) |
 | `SESSION_SECRET` | توقيع كوكيز الجلسات (استخدم قيمة عشوائية طويلة) |
 | `RESTRICTION_ADMIN_SECRET` | مفتاح الدخول إلى `/admin` (يُرسل كترويسة `x-admin-secret`) |
@@ -98,6 +99,28 @@ npm run dev
 - اترك `GOOGLE_OAUTH_REDIRECT_URI` فارغًا ليُبنى تلقائيًا من نطاق الطلب، أو ثبّته يدويًا.
 
 ## Gemini
+
+### النماذج في الواجهة
+
+| الاسم في الواجهة | المتغيّر | القيمة الحالية |
+| --- | --- | --- |
+| **Cosmos Blazar 3** (الرائد) | `GEMINI_MODEL` | `gemma-4-31b-it` |
+| **Cosmos Photon 3** (السريع) | `GEMINI_FAST_MODEL` | `gemini-3.8-flash` |
+| Cosmos Vision (الصور المدخلة) | `GEMINI_VISION_MODEL` | `gemma-4-31b-it` |
+| توليد الصور | `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-image` |
+| البدائل | `GEMINI_FALLBACK_MODEL` | `gemini-3.6-flash,gemma-4-31b-it` |
+
+**كيف تشغّل Photon 3؟** ضع اسم النموذج في `GEMINI_FAST_MODEL` داخل `.env` ثم أعد تشغيل الخادم:
+
+```env
+GEMINI_FAST_MODEL="gemini-3.8-flash"
+GEMINI_FALLBACK_MODEL="gemini-3.6-flash,gemma-4-31b-it"
+```
+
+- إذا كان المتغيّر فارغًا، يستخدم فوتون تلقائيًا نموذج Blazar (لن يتعطّل، لكن لن يكون أسرع).
+- عند رفض النموذج (404 أو غير مدعوم لحسابك) ينتقل الخادم تلقائيًا إلى أول نموذج متاح في `GEMINI_FALLBACK_MODEL`.
+- خرائط الأسماء موجودة في `server/lib/gemini.js` داخل `ALIASES`، وتظهر القيمة الفعلية لكل نموذج في `/api/status` و`/v1/models` تحت الحقل `upstream`.
+
 
 يستخدم الخادم المسار الأصلي:
 

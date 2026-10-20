@@ -49,6 +49,7 @@ const geminiModel = str('GEMINI_MODEL', 'gemini-2.5-flash');
 const geminiFast = str('GEMINI_FAST_MODEL', geminiModel);
 const geminiVision = str('GEMINI_VISION_MODEL', geminiModel);
 const geminiFallback = str('GEMINI_FALLBACK_MODEL', '');
+const geminiFallbackChain = list('GEMINI_FALLBACK_MODEL');
 const providerEnv = str('AI_PROVIDER', '').toLowerCase();
 const hasGeminiKey = Boolean(str('GEMINI_API_KEY', ''));
 const provider = providerEnv === 'mock' ? 'mock' : providerEnv === 'gemini' ? 'gemini' : hasGeminiKey ? 'gemini' : 'mock';
@@ -111,7 +112,8 @@ const config = {
     model: geminiModel,
     fastModel: geminiFast,
     visionModel: geminiVision,
-    fallbackModel: geminiFallback,
+    fallbackModel: geminiFallbackChain[0] || geminiFallback,
+    fallbackModels: geminiFallbackChain,
     imageModel: str('GEMINI_IMAGE_MODEL', ''),
     timeoutMs: int('GEMINI_TIMEOUT_MS', 120000),
     demoFallback: bool('DEMO_FALLBACK', true),
