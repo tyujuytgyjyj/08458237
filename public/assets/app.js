@@ -256,7 +256,7 @@
   }
   function modelShort(id) {
     const m = modelMeta(id);
-    return String(m.label || 'Cosmos').replace(/^Cosmos\s+/, '');
+    return String(m.label || 'Cosmos');
   }
 
   /* --------------------------------- السجل --------------------------------- */
@@ -569,7 +569,7 @@
     pinnedHost.innerHTML = pinned.map(chatRow).join('');
     let html = '';
     if (S.temp) {
-      html += '<div class="chat-item' + (S.temp ? ' active' : '') + '"><a href="#" data-temp-chat="1"><span class="title" style="color:var(--amber)">✦ دردشة مؤقتة</span></a></div>';
+      html += '<div class="chat-item' + (S.temp ? ' active' : '') + '"><a href="#" data-temp-chat="1"><span class="title" style="color:var(--amber)">دردشة مؤقتة</span></a></div>';
     }
     if (!recent.length) html += '<div class="empty-note">لا توجد محادثات محفوظة بعد.</div>';
     else html += recent.slice(0, 80).map(chatRow).join('');
@@ -661,7 +661,7 @@
         return '<button class="suggestion" type="button" ' + (s.attach ? 'data-act="attach"' : 'data-prompt="' + esc(s.prompt) + '"') + '>' +
           '<span class="s-ico">' + icon(s.icon, 17) + '</span><span><b>' + s.title + '</b><span>' + s.text + '</span></span></button>';
       }).join('') + '</div>' +
-      '<div class="empty-foot"><span><i class="dot"></i> مدعوم بـ Gemini</span><span><span class="dot" style="background:var(--accent)"></span> محادثاتك تبقى ملكك</span><span><span class="dot" style="background:var(--amber)"></span> نسخة إنتاج تجريبية</span></div>' +
+      '<div class="empty-foot"><span><i class="dot"></i> نماذج Cosmos</span><span><span class="dot" style="background:var(--accent)"></span> محادثاتك تبقى ملكك</span><span><span class="dot" style="background:var(--amber)"></span> نسخة إنتاج تجريبية</span></div>' +
       '</div>';
   }
 
@@ -829,12 +829,15 @@
     const models = S.models.length ? S.models : FALLBACK_MODELS;
     menu.innerHTML = '<div class="menu-label">اختر النموذج</div>' + models.map(function (m) {
       const selected = S.settings.model === m.id;
-      return '<button class="menu-item" type="button" data-model="' + esc(m.id) + '" role="menuitem">' +
+      const offline = m.available === false;
+      return '<button class="menu-item' + (offline ? ' is-offline' : '') + '" type="button" data-model="' + esc(m.id) + '" role="menuitem">' +
         icon(m.tag === 'سريع' ? 'bolt' : 'sparkles', 17) +
-        '<span class="mi-body"><b>' + esc(m.label || m.id) + (m.tag ? '<span class="tag">' + esc(m.tag) + '</span>' : '') + '</b><span>' + esc(m.description || '') + '</span></span>' +
+        '<span class="mi-body"><b>' + esc(m.label || m.id) + (m.tag ? '<span class="tag">' + esc(m.tag) + '</span>' : '') +
+        (offline ? '<span class="tag warn">غير متاح مؤقتًا</span>' : '') +
+        '</b><span>' + esc(m.description || '') + '</span></span>' +
         (selected ? '<span class="check">' + icon('check', 16) + '</span>' : '') + '</button>';
     }).join('') +
-      '<div class="menu-divider"></div><div class="menu-label">' + ((S.me && S.me.ai && S.me.ai.demo) ? 'وضع العرض المحلي — بدون اتصال بالنموذج' : 'مدعوم بواسطة Gemini') + '</div>';
+      '<div class="menu-divider"></div><div class="menu-label">' + ((S.me && S.me.ai && S.me.ai.demo) ? 'وضع العرض المحلي — بدون اتصال بالنموذج' : 'نماذج Cosmos') + '</div>';
     updateModelChip();
   }
 
@@ -888,13 +891,19 @@
     }
     const rows = [];
     rows.push(['الخادم', 'ok', (st.app.name || 'Cosmos') + ' v' + (st.app.version || '')]);
-    rows.push(['الذكاء الاصطناعي', st.ai && st.ai.demo ? 'warn' : st.ai && st.ai.keyConfigured ? 'ok' : 'bad', st.ai ? (st.ai.demo ? 'مزوّد محلي (mock)' : st.ai.model) : '—']);
+    const modelRows = (st.ai && Array.isArray(st.ai.models)) ? st.ai.models : [];
+    if (!modelRows.length) {
+      rows.push(['محرّك النماذج', st.ai && st.ai.demo ? 'warn' : 'ok', st.ai && st.ai.demo ? 'وضع تجريبي' : 'جاهز']);
+    }
+    modelRows.forEach(function (m) {
+      rows.push([m.label || m.id, m.available === false ? 'warn' : 'ok', m.available === false ? 'غير متاح مؤقتًا' : 'متاح']);
+    });
     rows.push(['Google', st.features && st.features.googleLogin ? 'ok' : 'bad', st.features && st.features.googleLogin ? 'مهيأ' : 'غير مهيأ']);
     rows.push(['Stripe', st.features && st.features.stripe ? 'ok' : 'bad', st.features && st.features.stripe ? 'الدفع جاهز' : 'غير مهيأ']);
     rows.push(['البريد', st.features && st.features.emailLogin ? 'ok' : 'warn', st.features ? (st.features.emailDelivery === 'demo' ? 'وضع تجريبي' : st.features.emailDelivery === 'smtp' ? 'SMTP جاهز' : 'معطّل') : '—']);
     rows.push(['قاعدة البيانات', st.storage && st.storage.driver === 'postgres' ? 'ok' : 'warn', st.storage ? (st.storage.driver === 'postgres' ? 'PostgreSQL' : 'ملفات محلية') : '—']);
     rows.push(['Redis', st.redis && st.redis.available ? 'ok' : 'warn', st.redis && st.redis.available ? 'متصل' : 'ذاكرة محلية']);
-    rows.push(['توليد الصور', st.features && st.features.images ? 'ok' : 'warn', st.ai && st.ai.imageModel ? 'مهيأ' : 'يحتاج إعدادًا']);
+    rows.push(['توليد الصور', st.features && st.features.images ? 'ok' : 'warn', st.features && st.features.images ? 'مهيأ' : 'يحتاج إعدادًا']);
     rows.push(['الإشعارات', st.features && st.features.push ? 'ok' : 'warn', st.features && st.features.push ? 'مهيأة' : 'غير مهيأة']);
     rows.push(['حماية CLI', st.security && st.security.antiCli !== 'disabled' ? 'ok' : 'warn', st.security ? st.security.antiCli : '—']);
     host.innerHTML = rows.map(function (r) {
@@ -914,13 +923,13 @@
       host.innerHTML = '<div class="ws-empty">' + icon('puzzle', 26) + 'لا توجد بيانات عن التكاملات بعد.</div>';
       return;
     }
-    host.innerHTML = (S.status && S.status.ai && S.status.ai.demo ? '<div class="alert warn">' + icon('activity', 14) + ' وضع العرض التجريبي مفعّل: لا يوجد اتصال حالي بنموذج Gemini. الردود توضيحية فقط حتى يتم وضع مفتاح صالح.</div>' : '') +
+    host.innerHTML = (S.status && S.status.ai && S.status.ai.demo ? '<div class="alert warn">' + icon('activity', 14) + ' وضع العرض التجريبي مفعّل: لا يوجد اتصال حالي بخدمة النموذج. الردود توضيحية فقط حتى تُضبط إعدادات الخادم.</div>' : '') +
       integrations.map(function (it) {
         return '<div class="list-tile"><span class="ti-ico">' + icon(integrationIcon(it.id), 16) + '</span><span class="ti-body"><b>' + esc(it.name) + '</b><span>' + esc(it.detail || '') + (it.action ? ' — ' + esc(it.action) : '') + '</span></span>' + statusPill(it.status) + '</div>';
       }).join('');
   }
   function integrationIcon(id) {
-    return { gemini: 'sparkles', google: 'google', email: 'mail', stripe: 'creditCard', database: 'database', redis: 'database', captcha: 'shield', push: 'activity', images: 'image', ads: 'globe' }[id] || 'puzzle';
+    return { ai: 'sparkles', google: 'google', email: 'mail', stripe: 'creditCard', database: 'database', redis: 'database', captcha: 'shield', push: 'activity', images: 'image', ads: 'globe' }[id] || 'puzzle';
   }
 
   function renderLog() {
@@ -1233,6 +1242,7 @@
     if (err.status === 429 && err.code === 'daily_limit') return err.message || 'بلغت الحد اليومي للرسائل.';
     if (err.status === 429) return err.message || 'طلبات كثيرة جدًا. انتظر قليلًا.';
     if (err.status === 401 || err.status === 403) return err.message || 'تحقّق من إعدادات الوصول.';
+    if (err.code === 'photon_unavailable') return err.message || 'Cosmos Photon 3 غير متاح مؤقتًا. جرّب Cosmos Blazar 3 أو أعد المحاولة بعد قليل.';
     if (err.status === 0) return 'تعذّر الاتصال بالخادم. تأكد أن الخادم يعمل ثم أعد المحاولة.';
     return err.message || 'تعذّر إكمال الطلب.';
   }
@@ -1341,7 +1351,7 @@
         showDemoBadge();
         if (!S.demoToastShown) {
           S.demoToastShown = true;
-          toast('تعذّر الوصول إلى Gemini من الخادم — هذا رد توضيحي تجريبي.', 'err', 4200);
+          toast('تعذّر الوصول إلى خدمة النموذج — هذا رد توضيحي تجريبي.', 'err', 4200);
         }
       }
       if (aborted) toast('تم إيقاف التوليد');
@@ -2869,7 +2879,7 @@
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'https:') return;
-    if (/(^|\.)e2b\.app$/i.test(location.hostname) || /^(localhost|127\.0\.0\.1)$/i.test(location.hostname)) return;
+    if (/(^|\.)e2b\.app$/i.test(location.hostname)) return;
     navigator.serviceWorker.register('/sw.js').catch(function () { /* ignore */ });
   }
 

@@ -4,6 +4,7 @@ const express = require('express');
 const config = require('../config');
 const store = require('../lib/store');
 const bans = require('../lib/bans');
+const photon = require('../lib/photon');
 const security = require('../lib/security');
 const { isAdmin } = require('../lib/rate-limit');
 const { asyncHandler, apiError } = require('../lib/http');
@@ -12,6 +13,13 @@ const { logEvent, recent } = require('../lib/events');
 const { publicUser } = require('../lib/util');
 
 const router = express.Router();
+
+/** أحداث عامة للوحة الإدارة: بلا أسماء مزوّدين أو تفاصيل الخدمات. */
+function publicEvent(event) {
+  const data = { ...(event.data || {}) };
+  delete data.provider;
+  return { id: event.id, type: event.type, at: event.at, userId: event.userId || null, ip: event.ip || null, data };
+}
 
 function adminOnly(req, res, next) {
   if (!config.admin.enabled || !config.admin.secret) {
@@ -59,13 +67,14 @@ router.get('/api/admin/overview', asyncHandler(async (req, res) => {
     stripeEvents,
     bans: bans.info(),
     storage: { driver: store.driver },
-    ai: { provider: config.ai.provider, demo: config.ai.provider === 'mock', model: config.ai.model },
+    ai: { demo: config.ai.provider === 'mock' },
+    photon: photon.diagnostics(),
     security: {
       antiCli: config.antiCli.disabled ? 'disabled' : config.antiCli.mode,
       threatList: security.threat.ips.size + security.threat.cidrs.length,
       captcha: config.captcha.enforce,
     },
-    events,
+    events: events.map(publicEvent),
   });
 }));
 
@@ -159,7 +168,7 @@ router.post('/api/admin/blocklist/reload', asyncHandler(async (req, res) => {
 router.get('/api/admin/events', asyncHandler(async (req, res) => {
   const limit = Math.min(300, Math.max(1, Number(req.query.limit) || 80));
   const events = await recent(limit);
-  res.json({ ok: true, events });
+  res.json({ ok: true, events: events.map(publicEvent) });
 }));
 
 router.get('/api/admin/security/log', asyncHandler(async (req, res) => {
@@ -170,7 +179,7 @@ router.get('/api/admin/security/log', asyncHandler(async (req, res) => {
     const lines = content.trim().split(/\r?\n/).slice(-tail).map((line) => {
       try { return JSON.parse(line); } catch { return { raw: line }; }
     });
-    res.json({ ok: true, entries: lines, file: config.antiCli.logFile });
+    res.json({ ok: true, entries: lines });
   } catch (err) {
     res.json({ ok: true, entries: [], note: 'لا يوجد سجل بعد' });
   }

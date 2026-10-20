@@ -4,7 +4,7 @@
 
 **مساحة واحدة لكل أفكارك — دردشة ذكاء اصطناعي عربية كاملة.**
 
-Node.js + HTML/CSS/JS فانيلا · Gemini · بث SSE · تسجيل دخول · Stripe · لوحة إدارة
+Node.js + HTML/CSS/JS فانيلا · Blazar 3 وPhoton 3 · بث SSE · تسجيل دخول · Stripe · لوحة إدارة
 
 </div>
 
@@ -13,7 +13,12 @@ Node.js + HTML/CSS/JS فانيلا · Gemini · بث SSE · تسجيل دخول 
 ## ما هذا؟
 
 Cosmos تطبيق دردشة كامل باللغة العربية (RTL) بواجهة تشبه ChatGPT، يعمل على خادم Node.js واحد بدون أي إطار عمل أمامي.
-الواجهة مبنية بـ HTML/CSS/JS فانيلا، والخادم Express يقدّم الواجهة وواجهة برمجية متوافقة مع OpenAI، ويتصل بـ Gemini من جهة الخادم (المفتاح لا يظهر للمتصفح أبدًا).
+الواجهة مبنية بـ HTML/CSS/JS فانيلا، والخادم Express يقدّم الواجهة وواجهة برمجية متوافقة مع OpenAI، ويتصل بجهتين من جهة الخادم فقط:
+
+- **Cosmos Blazar 3** → خدمة Blazar المهيأة على Gemini (المفتاح لا يظهر للمتصفح أبدًا).
+- **Cosmos Photon 3** → خدمة DeepSeek المحلية المتوافقة مع OpenAI على `127.0.0.1:9655`.
+
+لا يوجد أي مسار مشترك بين المنتجين: اختيار Photon لا يُوجَّه إلى Blazar، وإن كانت الخدمة المحلية متوقفة يظهر خطأ توفر واضح.
 
 - الواجهة: `http://localhost:4000`
 - لوحة الإدارة: `http://localhost:4000/admin`
@@ -25,7 +30,7 @@ Cosmos تطبيق دردشة كامل باللغة العربية (RTL) بواج
 | --- | --- |
 | المحادثة | بث مباشر (SSE)، إيقاف التوليد، إعادة التوليد، تعديل الرسائل، نسخ، تنزيل، تقييم الردود |
 | المرفقات | صور (تُضغط في المتصفح)، PDF، ملفات نصية وكود — تُرسل إلى Gemini كأجزاء أصلية |
-| النماذج | Blazar 3 (الأقوى) وPhoton 3 (الأسرع)، مع تحويل تلقائي للنموذج البديل عند فشل النموذج الأساسي |
+| النماذج | Blazar 3 (الأقوى) وPhoton 3 (الأسرع)؛ كل منتج له خدمته المستقلة، وسلسلة بدائل داخل Blazar فقط عند رفض النموذج |
 | المحادثات | قائمة جانبية، بحث فوري، تثبيت، إعادة تسمية، حذف، مزامنة مع الخادم بعد الدخول |
 | المساحة | ملاحظات، مهام مجدولة مع إشعارات، مكتبة أوامر، وسجل نشاط |
 | الحساب | دخول بالبريد عبر رمز 6 أرقام، ودخول Google OAuth، وتصدير/حذف البيانات |
@@ -67,9 +72,16 @@ npm run dev
 | `PORT` | منفذ الخادم (افتراضي 4000) |
 | `GEMINI_API_KEY` | مفتاح Google AI Studio (مفاتيح `AQ.` الجديدة مدعومة على المسار الأصلي) |
 | `GEMINI_MODEL` | نموذج **Blazar 3** (الافتراضي: `gemma-4-31b-it`) |
-| `GEMINI_FAST_MODEL` | نموذج **Photon 3** — هذا هو المتغيّر الذي "يشغّل" فوتون. إن تُرك فارغًا يعود فوتون لنفس نموذج Blazar |
-| `GEMINI_FALLBACK_MODEL` | سلسلة بدائل مفصولة بفاصلة تُجرّب تلقائيًا عند 404/عدم دعم النموذج |
+| `GEMINI_FALLBACK_MODEL` | سلسلة بدائل مفصولة بفاصلة تُجرّب تلقائيًا داخل Blazar عند 404/عدم دعم النموذج |
 | `GEMINI_IMAGE_MODEL` | نموذج توليد الصور (مثال: `gemini-2.5-flash-image`) |
+| `DEEPSEEK_BASE_URL` | عنوان خدمة **Photon 3** المحلية (الافتراضي: `http://127.0.0.1:9655`) |
+| `DEEPSEEK_API_KEY` | مفتاح الخدمة المحلية إن كانت تطلب `Authorization: Bearer` (اتركه فارغًا إن لم تكن) |
+| `DEEPSEEK_MODEL` | نموذج المحادثة في خدمة Photon (الافتراضي: `deepseek-chat`) |
+| `DEEPSEEK_VISION_MODEL` | نموذج الصور في خدمة Photon (الافتراضي: `deepseek-flash`) |
+| `DEEPSEEK_HEALTH_PATH` | مسار فحص التوفر (الافتراضي: `/v1/models`) |
+| `DEEPSEEK_TIMEOUT_MS` | مهلة الطلب إلى خدمة Photon (الافتراضي: 120000) |
+| `DEEPSEEK_RESET_SESSION` | تصفير جلسة الخدمة المحلية قبل كل طلب (`true` افتراضيًا) |
+| `DEEPSEEK_AUTOSTART` / `DEEPSEEK_START_COMMAND` | تشغيل الخدمة تلقائيًا عند الطلب (معطّل افتراضيًا) |
 | `SESSION_SECRET` | توقيع كوكيز الجلسات (استخدم قيمة عشوائية طويلة) |
 | `RESTRICTION_ADMIN_SECRET` | مفتاح الدخول إلى `/admin` (يُرسل كترويسة `x-admin-secret`) |
 | `FREE_DAILY_MESSAGES` / `GUEST_DAILY_MESSAGES` | الحد اليومي للرسائل |
@@ -98,29 +110,38 @@ npm run dev
 - ضع `GOOGLE_OAUTH_CLIENT_ID` و`GOOGLE_OAUTH_CLIENT_SECRET`.
 - اترك `GOOGLE_OAUTH_REDIRECT_URI` فارغًا ليُبنى تلقائيًا من نطاق الطلب، أو ثبّته يدويًا.
 
-## Gemini
+## النماذج: Blazar 3 وPhoton 3
 
-### النماذج في الواجهة
+### المنتجان
 
-| الاسم في الواجهة | المتغيّر | القيمة الحالية |
+| الاسم في الواجهة | الخدمة الخلفية | الإعداد |
 | --- | --- | --- |
-| **Cosmos Blazar 3** (الرائد) | `GEMINI_MODEL` | `gemma-4-31b-it` |
-| **Cosmos Photon 3** (السريع) | `GEMINI_FAST_MODEL` | `gemini-3.8-flash` |
-| Cosmos Vision (الصور المدخلة) | `GEMINI_VISION_MODEL` | `gemma-4-31b-it` |
-| توليد الصور | `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-image` |
-| البدائل | `GEMINI_FALLBACK_MODEL` | `gemini-3.6-flash,gemma-4-31b-it` |
+| **Cosmos Blazar 3** (الرائد) | Gemini (المسار الأصلي) | `GEMINI_MODEL` = `gemma-4-31b-it` |
+| **Cosmos Photon 3** (السريع) | خدمة DeepSeek المحلية المتوافقة مع OpenAI | `DEEPSEEK_*` |
+| صور Blazar | Gemini | `GEMINI_VISION_MODEL` / `GEMINI_IMAGE_MODEL` |
+| بدائل Blazar | Gemini | `GEMINI_FALLBACK_MODEL` |
 
-**كيف تشغّل Photon 3؟** ضع اسم النموذج في `GEMINI_FAST_MODEL` داخل `.env` ثم أعد تشغيل الخادم:
+أسماء المنتجين فقط هي التي تظهر في الواجهة وواجهة API. أسماء النماذج الخارجية والعناوين والمفاتيح تبقى في `.env` وعلى الخادم، ولا تُعاد في أي استجابة للمتصفح.
 
-```env
-GEMINI_FAST_MODEL="gemini-3.8-flash"
-GEMINI_FALLBACK_MODEL="gemini-3.6-flash,gemma-4-31b-it"
+### تشغيل Photon 3 (خدمة محلية)
+
+يلزم تشغيل خدمة DeepSeek المتوافقة مع OpenAI على العنوان المحدد في `DEEPSEEK_BASE_URL` (افتراضيًا `http://127.0.0.1:9655`). الخدمة تُستدعى هكذا:
+
+```
+POST {DEEPSEEK_BASE_URL}/v1/chat/completions
+{ "model": "deepseek-chat", "messages": [...], "stream": true }
+
+POST {DEEPSEEK_BASE_URL}/reset-session?agent=all   # عند DEEPSEEK_RESET_SESSION=true
+GET  {DEEPSEEK_BASE_URL}{DEEPSEEK_HEALTH_PATH}     # فحص التوفر
 ```
 
-- إذا كان المتغيّر فارغًا، يستخدم فوتون تلقائيًا نموذج Blazar (لن يتعطّل، لكن لن يكون أسرع).
-- عند رفض النموذج (404 أو غير مدعوم لحسابك) ينتقل الخادم تلقائيًا إلى أول نموذج متاح في `GEMINI_FALLBACK_MODEL`.
-- خرائط الأسماء موجودة في `server/lib/gemini.js` داخل `ALIASES`، وتظهر القيمة الفعلية لكل نموذج في `/api/status` و`/v1/models` تحت الحقل `upstream`.
+- الرؤية: عند إرفاق صورة يُستخدم `DEEPSEEK_VISION_MODEL` مع أجزاء `image_url`.
+- عند تعطّل الخدمة: يعيد الخادم **503** بالرمز `photon_unavailable` ورسالة «Cosmos Photon 3 غير متاح مؤقتًا»، مع `Retry-After: 30`. **لا يوجد تحويل صامت إلى Blazar.**
+- فحص التوفر له ذاكرة 15 ثانية؛ ويُعاد الفحص عند كل طلب Photon وعند تحديث قائمة النماذج.
+- `DEEPSEEK_AUTOSTART=true` مع `DEEPSEEK_START_COMMAND` يتيح تشغيل الخدمة تلقائيًا عند أول طلب (مع منع تكرار المحاولات).
+- للتطوير فقط: `npm run local:model` يشغّل خدمة محاكاة متوافقة مع OpenAI على المنفذ 9655 لاختبار المسار كاملًا. هذه محاكاة اختبار وليست نموذج DeepSeek الحقيقي.
 
+### Blazar 3 (Gemini)
 
 يستخدم الخادم المسار الأصلي:
 
@@ -131,6 +152,7 @@ POST https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGener
 - مفاتيح `AQ.` الجديدة تعمل مع `?key=` على المسار الأصلي (وليست على مسار OpenAI الخاص بجوجل).
 - عند فشل الوصول إلى الشبكة، يعيد الخادم **ردًا توضيحيًا عربيًا** إذا كان `DEMO_FALLBACK=true` بدل إظهار خطأ صامت.
 - إذا لم يكن النموذج متاحًا (404) يُجرّب `GEMINI_FALLBACK_MODEL` ثم يعيد الخطأ الأصلي.
+- إذا فشل الاتصال بالخدمة كليًا دون تفعيل الوضع التجريبي، يعيد الخادم خطأ عربيًا واضحًا (`blazar_unavailable`) بلا أسماء مزوّدين.
 - الصور: `POST /api/images` يستخدم `GEMINI_IMAGE_MODEL`، ومع تعذّر الاتصال يعيد صورة SVG محلية موسومة كتجريبية.
 
 ## لوحة الإدارة
@@ -138,7 +160,7 @@ POST https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGener
 - الرابط: `/admin`
 - المفتاح: قيمة `RESTRICTION_ADMIN_SECRET` من `.env`.
 - كل طلبات الإدارة تتطلب ترويسة `x-admin-secret`.
-- تشمل: إحصاءات اليوم، المستخدمون والخطط، إيقاف/حذف، حظر IP/مستخدم، سجل الأحداث، سجل الأمان (Anti-CLI)، تشخيص Gemini والبريد، تصدير CSV.
+- تشمل: إحصاءات اليوم، المستخدمون والخطط، إيقاف/حذف، حظر IP/مستخدم، سجل الأحداث، سجل الأمان (Anti-CLI)، تشخيص الخدمات والبريد، تصدير CSV.
 
 مثال:
 
@@ -200,9 +222,10 @@ curl -N http://localhost:4000/v1/chat/completions \
 ## الاختبارات والفحص
 
 ```bash
-npm test          # 13 اختبار تكامل (خادم مؤقت، تخزين مؤقت، مزوّد mock)
-npm run check     # فحص صياغة JS + تطابق معرّفات HTML + الأصول
-npm run mock:gemini   # خادم OpenAI-compatible محلي على 9655 للتطوير بلا إنترنت
+npm test              # 22 اختبار تكامل: الواجهة البرمجية + توجيه النماذج
+npm run check         # فحص صياغة JS + تطابق معرّفات HTML + الأصول
+npm run local:model   # خدمة محاكاة OpenAI على 9655 للتحقق من مسار Photon
+npm run mock:gemini   # محاكاة قديمة للتطوير على 9680 (لمسار مستقل عن Photon)
 ```
 
 فحوصات واجهة اختيارية عبر jsdom (تحتاج خادمًا يعمل على 4000):
@@ -235,8 +258,9 @@ public/
   admin.html          لوحة الإدارة
   assets/             app.js/app.css/theme-init.js + admin.js/admin.css
   sw.js, manifest.webmanifest, offline.html, icons/
-tests/api.test.js     اختبارات تكامل
-tools/                mock-gemini.js + فحوصات jsdom
+tests/api.test.js     اختبارات تكامل الواجهة البرمجية
+tests/routing.test.js اختبارات توجيه Blazar/Photon وعدم تسريب التفاصيل
+tools/                local-model-service.js + mock-gemini.js + فحوصات jsdom
 data/                 قاعدة البيانات المحلية (مستثناة من Git)
 ```
 

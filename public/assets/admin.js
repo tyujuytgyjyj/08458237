@@ -182,7 +182,7 @@
         var label = p === 'free' ? 'مجاني' : p === 'premium' ? 'مميز' : 'احترافي';
         return '<div><b>' + label + '</b><span style="font-size:18px;font-weight:700">' + num(plans[p] || 0) + '</span></div>';
       }).join('') +
-        '<div><b>مزوّد الذكاء</b><code>' + esc(d.ai.provider) + ' · ' + esc(d.ai.model) + (d.ai.demo ? ' (تجريبي)' : '') + '</code></div>' +
+        '<div><b>حالة الذكاء الاصطناعي</b><code>' + (d.ai.demo ? 'وضع تجريبي' : 'جاهز') + '</code></div>' +
         '<div><b>حماية CLI</b><code>' + esc(d.security.antiCli) + ' · قائمة الحجب: ' + num(d.security.threatList) + '</code></div>';
 
       renderEvents($('#recentEvents'), (d.events || []).slice(0, 8));
@@ -275,6 +275,7 @@
     api('/api/diagnostics' + (probe ? '?probe=1' : '')).then(function (d) {
       box.innerHTML =
         '<h2 style="font-size:13px;margin:0 0 8px">الذكاء الاصطناعي</h2>' + kvRender(d.ai || {}) +
+        '<h2 style="font-size:13px;margin:16px 0 8px">Cosmos Photon 3</h2>' + kvRender(d.photon || {}) +
         '<h2 style="font-size:13px;margin:16px 0 8px">البنية</h2>' + kvRender({ storage: d.storage, redis: d.redis, email: d.email, stripe: d.stripe, oauth: d.oauth }) +
         '<h2 style="font-size:13px;margin:16px 0 8px">الأمان</h2>' + kvRender(d.security || {}) +
         '<details style="margin-top:14px"><summary style="cursor:pointer;font-size:11px;color:var(--muted)">JSON الكامل</summary><pre class="pre">' + esc(JSON.stringify(d, null, 2)) + '</pre></details>';

@@ -122,11 +122,12 @@ test('OpenAI-compatible endpoint works without cookies (original HTML)', async (
   const res = await fetch(BASE + '/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin: 'null' },
-    body: JSON.stringify({ model: 'deepseek-chat', stream: false, messages: [{ role: 'user', content: 'مرحبًا' }] }),
+    body: JSON.stringify({ model: 'cosmos-blazar-3', stream: false, messages: [{ role: 'user', content: 'مرحبًا' }] }),
   });
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.ok(body.choices[0].message.content.length > 10);
+  assert.equal(body.model, 'cosmos-blazar-3');
   assert.equal(res.headers.get('access-control-allow-origin'), '*');
 });
 

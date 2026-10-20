@@ -3,6 +3,8 @@
 const express = require('express');
 const config = require('../config');
 const gemini = require('../lib/gemini');
+const photon = require('../lib/photon');
+const models = require('../lib/models');
 const store = require('../lib/store');
 const { chatLimiter } = require('../lib/rate-limit');
 const { asyncHandler, openaiError } = require('../lib/http');
@@ -66,7 +68,9 @@ async function handleChat(req, res) {
   const stream = body.stream === undefined ? req.path === '/api/chat' : Boolean(body.stream);
   const mode = selectedMode(req, body);
   const requestedModel = body.model || 'cosmos-blazar-3';
-  const model = gemini.resolveModel(requestedModel);
+  const target = models.resolve(requestedModel);
+  const model = target.id;
+  const runner = target.provider === 'photon' ? photon : gemini;
   const systemFromMessages = messages
     .filter((m) => m.role === 'system' && typeof m.content === 'string')
     .map((m) => m.content)
@@ -105,6 +109,15 @@ async function handleChat(req, res) {
     }
   });
 
+  if (target.provider === 'photon') {
+    const ready = await photon.ensureAvailable();
+    if (!ready.ok) {
+      const failure = photon.unavailableError();
+      res.setHeader('Retry-After', String(failure.retryAfter || 30));
+      return openaiError(res, failure.status, failure.message, { code: failure.code, type: 'service_unavailable' });
+    }
+  }
+
   const id = `chatcmpl-${uid(12)}`;
   const created = Math.floor(Date.now() / 1000);
   const sendHeaders = {
@@ -131,8 +144,10 @@ async function handleChat(req, res) {
     let gotText = false;
     let result = null;
     try {
-      result = await gemini.streamChat({
-        messages, model: requestedModel, mode, system, temperature, maxTokens,
+      result = await runner.streamChat({
+        messages,
+        model: target.provider === 'photon' ? undefined : config.ai.model,
+        mode, system, temperature, maxTokens,
         signal: controller.signal,
         onDelta: (text) => {
           gotText = true;
@@ -149,7 +164,7 @@ async function handleChat(req, res) {
         });
       }
       sseWrite(res, {
-        id, object: 'chat.completion.chunk', created, model: result.model || model,
+        id, object: 'chat.completion.chunk', created, model,
         choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
         usage: result.usage || undefined,
         demo: result.demo || undefined,
@@ -159,12 +174,13 @@ async function handleChat(req, res) {
       if (clientClosed || err.name === 'AbortError') {
         // العميل أغلق الاتصال
       } else {
-        console.warn('[chat] stream error:', err.message, err.upstreamDetail || '');
+        console.warn('[chat] stream error:', err.code || '', err.internal || err.message, err.upstreamDetail || '');
         sseWrite(res, {
           error: {
             message: err.message || 'تعذّر إكمال الرد.',
             type: err.code || 'upstream_error',
             code: err.code || 'ai_error',
+            ...(err.retryAfter ? { retry_after: err.retryAfter } : {}),
           },
         });
         sseWrite(res, '[DONE]');
@@ -176,7 +192,7 @@ async function handleChat(req, res) {
         try {
           await store.incrementUsage(req.owner, result?.usage?.prompt_tokens || 0, result?.usage?.completion_tokens || 0);
           await logEvent('chat', {
-            model: result?.model || model, mode,
+            model, mode,
             demo: Boolean(result?.demo),
             chars: result?.text?.length || 0,
             userId: req.user?.id || null,
@@ -190,35 +206,51 @@ async function handleChat(req, res) {
   }
 
   try {
-    const result = await gemini.completeChat({ messages, model: requestedModel, mode, system, temperature, maxTokens, signal: controller.signal });
+    const result = await runner.completeChat({
+      messages,
+      model: target.provider === 'photon' ? undefined : config.ai.model,
+      mode, system, temperature, maxTokens,
+      signal: controller.signal,
+    });
     const content = result.text || '';
     await store.incrementUsage(req.owner, result.usage?.prompt_tokens || 0, result.usage?.completion_tokens || 0);
-    await logEvent('chat', { model: result.model || model, mode, demo: Boolean(result.demo), chars: content.length, userId: req.user?.id || null }, req);
+    await logEvent('chat', { model, mode, demo: Boolean(result.demo), chars: content.length, userId: req.user?.id || null }, req);
     if (result.demo) res.setHeader('X-Cosmos-Demo', '1');
     for (const [k, v] of Object.entries(sendHeaders)) res.setHeader(k, v);
     return res.json({
       id,
       object: 'chat.completion',
       created,
-      model: result.model || model,
+      model,
       choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }],
       usage: result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
       demo: result.demo || undefined,
     });
   } catch (err) {
     if (err.name === 'AbortError' || clientClosed) return;
-    console.warn('[chat] error:', err.message, err.upstreamDetail || '');
-    return openaiError(res, err.status || 502, err.message || 'تعذّر توليد الرد.', { code: err.code || 'ai_error', type: err.code === 'quota_exceeded' ? 'rate_limit_exceeded' : 'upstream_error' });
+    console.warn('[chat] error:', err.code || '', err.internal || err.message, err.upstreamDetail || '');
+    if (err.retryAfter) res.setHeader('Retry-After', String(err.retryAfter));
+    const type = err.code === 'quota_exceeded' ? 'rate_limit_exceeded'
+      : err.code === 'photon_unavailable' ? 'service_unavailable'
+        : 'upstream_error';
+    return openaiError(res, err.status || 502, err.message || 'تعذّر توليد الرد.', { code: err.code || 'ai_error', type });
   }
 }
 
-router.get('/v1/models', (req, res) => {
-  res.json({ object: 'list', data: gemini.listModels().map((m) => ({ id: m.id, object: 'model', created: 0, owned_by: 'cosmos', ...m })) });
-});
+router.get('/v1/models', asyncHandler(async (req, res) => {
+  await models.primeAvailability();
+  res.json({
+    object: 'list',
+    data: models.list().map((m) => ({ id: m.id, object: 'model', created: 0, owned_by: 'cosmos', ...m })),
+  });
+}));
 
-router.get('/api/models', (req, res) => {
-  res.json({ data: gemini.listModels(), provider: config.ai.provider, demo: gemini.isDemo() });
-});
+router.get('/api/models', asyncHandler(async (req, res) => {
+  await models.primeAvailability();
+  models.refreshAvailability();
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ data: models.list(), demo: gemini.isDemo() });
+}));
 
 router.post('/v1/chat/completions', chatLimiter, asyncHandler(handleChat));
 router.post('/api/chat', chatLimiter, asyncHandler(handleChat));

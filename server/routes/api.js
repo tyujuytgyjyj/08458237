@@ -6,6 +6,7 @@ const config = require('../config');
 const store = require('../lib/store');
 const redis = require('../lib/redis');
 const gemini = require('../lib/gemini');
+const photon = require('../lib/photon');
 const email = require('../lib/email');
 const bans = require('../lib/bans');
 const auth = require('../lib/auth');
@@ -64,7 +65,7 @@ router.get('/api/me', asyncHandler(async (req, res) => {
     },
     preferences: req.user?.prefs || req.session?.prefs || {},
     features: features(),
-    ai: { provider: gemini.isDemo() ? 'mock' : 'gemini', demo: gemini.isDemo(), model: config.ai.model },
+    ai: { demo: gemini.isDemo() },
     limits: {
       maxFileSize: config.limits.maxFileSize,
       maxFileCount: config.limits.maxFileCount,
@@ -129,7 +130,7 @@ router.post('/api/images', imageLimiter, asyncHandler(async (req, res) => {
   const prompt = truncate(String(req.body?.prompt || '').trim(), 1000);
   if (prompt.length < 3) return apiError(res, 400, 'اكتب وصفًا أوضح للصورة (3 أحرف على الأقل)');
   if (!config.ai.imageModel && !gemini.isDemo() && !config.ai.demoFallback) {
-    return apiError(res, 503, 'توليد الصور غير مهيأ. أضف GEMINI_IMAGE_MODEL في .env.', { code: 'image_not_configured' });
+    return apiError(res, 503, 'توليد الصور غير مهيأ على الخادم حاليًا.', { code: 'image_not_configured' });
   }
   try {
     const result = await gemini.generateImage({ prompt });
@@ -177,30 +178,28 @@ router.get('/api/diagnostics', asyncHandler(async (req, res) => {
   const probe = req.query.probe === '1' ? await gemini.probe() : null;
   let logSize = 0;
   try { logSize = fs.statSync(config.antiCli.logFile).size; } catch { /* no log */ }
+  console.info('[diagnostics] طلب تشخيص إداري — Blazar/Photon والخدمات المحلية');
   res.json({
     ok: true,
     time: iso(),
     env: config.env,
     version: config.version,
     ai: {
-      provider: gemini.isDemo() ? 'mock' : 'gemini',
       demo: gemini.isDemo(),
-      keyConfigured: config.ai.hasKey,
-      model: config.ai.model,
-      fastModel: config.ai.fastModel,
-      imageModel: config.ai.imageModel || null,
-      baseUrl: config.ai.baseUrl,
+      keyConfigured: Boolean(config.ai.hasKey),
+      imageReady: Boolean(config.ai.imageModel),
+      visionReady: Boolean(config.ai.visionModel),
       demoFallback: config.ai.demoFallback,
-      probe,
+      probe: probe ? { ok: Boolean(probe.ok), latencyMs: probe.latencyMs ?? null, status: probe.status ?? null } : null,
     },
-    storage: { ...store.info(), dir: config.storageDir },
-    redis: redis.info(),
-    email: email.info(),
+    photon: photon.diagnostics(),
+    storage: { driver: store.info().driver },
+    redis: { driver: redis.info().driver, connected: Boolean(redis.info().connected) },
+    email: { configured: Boolean(email.info().configured), lastError: email.info().lastError || null },
     stripe: { configured: Boolean(config.stripe.secretKey), webhook: Boolean(config.stripe.webhookSecret), prices: Boolean(config.stripe.plans.premium.priceId && config.stripe.plans.pro.priceId) },
-    oauth: config.oauth,
+    oauth: { google: Boolean(config.oauth.googleConfigured), facebook: Boolean(config.oauth.facebookConfigured) },
     security: {
       antiCliMode: config.antiCli.disabled ? 'disabled' : config.antiCli.mode,
-      logFile: config.antiCli.logFile,
       logBytes: logSize,
       bans: bans.info(),
       threatList: { ips: security.threat.ips.size, cidrs: security.threat.cidrs.length, updatedAt: security.threat.updatedAt },

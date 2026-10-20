@@ -4,13 +4,13 @@ const config = require('../config');
 const { sleep, truncate } = require('./util');
 
 const ARABIC_ERRORS = {
-  400: 'الطلب غير صالح. قد يكون حجم الصورة أو المحتوى أكبر من المسموح.',
-  401: 'مفتاح Gemini مرفوض. تحقّق من GEMINI_API_KEY في ملف .env.',
-  403: 'الحساب لا يملك صلاحية استخدام هذا النموذج أو انتهت صلاحية المفتاح.',
-  404: 'النموذج المطلوب غير متاح لهذا الحساب. جرّب نموذجًا آخر أو راجع GEMINI_MODEL.',
-  429: 'تم تجاوز حصة Gemini أو حد الطلبات. انتظر قليلًا ثم أعد المحاولة.',
-  500: 'خدمة Gemini تعذّرت مؤقتًا. أعد المحاولة بعد لحظات.',
-  503: 'خدمة Gemini مشغولة الآن. أعد المحاولة بعد لحظات.',
+  400: 'تعذّر معالجة الطلب. قد يكون حجم المحتوى أو الصورة أكبر من المسموح.',
+  401: 'تعذّر التحقق من خدمة النموذج. راجع إعدادات الخادم.',
+  403: 'هذا الحساب لا يملك صلاحية استخدام النموذج حاليًا.',
+  404: 'النموذج المطلوب غير متاح حاليًا. جرّب نموذجًا آخر.',
+  429: 'خدمة النموذج مشغولة الآن أو تجاوزت الحصة. أعد المحاولة بعد قليل.',
+  500: 'خدمة النموذج غير متاحة مؤقتًا. أعد المحاولة بعد لحظات.',
+  503: 'خدمة النموذج غير متاحة مؤقتًا. أعد المحاولة بعد لحظات.',
 };
 
 class AiError extends Error {
@@ -25,55 +25,21 @@ class AiError extends Error {
   }
 }
 
-const ALIASES = {
-  'cosmos-blazar-3': { target: 'model', label: 'Cosmos Blazar 3' },
-  'blazar': { target: 'model', label: 'Cosmos Blazar 3' },
-  'cosmos-photon-3': { target: 'fastModel', label: 'Cosmos Photon 3' },
-  'photon': { target: 'fastModel', label: 'Cosmos Photon 3' },
-  'cosmos-vision': { target: 'visionModel', label: 'Cosmos Vision' },
-  'vision': { target: 'visionModel', label: 'Cosmos Vision' },
-};
-
+/**
+ * يحوّل اسمًا داخليًا إلى نموذج Blazar الفعلي.
+ * خرائط المنتجات (Blazar/Photon) موجودة في lib/models.js وليست هنا.
+ */
 function resolveModel(requested) {
   const name = String(requested || '').trim();
-  if (name && ALIASES[name.toLowerCase()]) {
-    const alias = ALIASES[name.toLowerCase()];
-    return config.ai[alias.target] || config.ai.model;
-  }
   if (!name) return config.ai.model;
-  const known = [config.ai.model, config.ai.fastModel, config.ai.visionModel, config.ai.imageModel, config.ai.fallbackModel].filter(Boolean);
+  const known = [config.ai.model, config.ai.visionModel, config.ai.imageModel, config.ai.fallbackModel].filter(Boolean);
   if (known.includes(name)) return name;
-  if (/^[a-z0-9][a-z0-9._-]{2,80}$/i.test(name) && name.startsWith('gemini-')) return name;
-  if (/^[a-z0-9][a-z0-9._-]{2,80}$/i.test(name) && name.startsWith('gemma-')) return name;
+  if (/^[a-z0-9][a-z0-9._-]{2,80}$/i.test(name) && (name.startsWith('gemini-') || name.startsWith('gemma-'))) return name;
   return config.ai.model;
 }
 
 function isDemo() {
   return config.ai.provider === 'mock';
-}
-
-function listModels() {
-  const vision = config.ai.visionModel;
-  return [
-    {
-      id: 'cosmos-blazar-3',
-      object: 'model',
-      label: 'Cosmos Blazar 3',
-      description: 'الأقوى — للمهام الطويلة والفهم العميق والكتابة الاحترافية',
-      tag: 'الرائد',
-      upstream: config.ai.model,
-      capabilities: { vision: Boolean(vision), streaming: true, images: Boolean(config.ai.imageModel) },
-    },
-    {
-      id: 'cosmos-photon-3',
-      object: 'model',
-      label: 'Cosmos Photon 3',
-      description: 'خفيف وسريع جدًا — للمهام اليومية والمحادثات القصيرة',
-      tag: 'سريع',
-      upstream: config.ai.fastModel,
-      capabilities: { vision: Boolean(vision), streaming: true, images: false },
-    },
-  ];
 }
 
 function systemPrompt(mode, extra) {
@@ -210,7 +176,7 @@ async function buildPayload({ messages, mode, system, temperature, maxTokens }) 
 
 function upstreamMessage(status, detail) {
   const first = String(detail || '').match(/message"?\s*:\s*"([^"]+)"/);
-  const base = ARABIC_ERRORS[status] || 'تعذّر الاتصال بنموذج Gemini.';
+  const base = ARABIC_ERRORS[status] || 'تعذّر الاتصال بخدمة النموذج.';
   return first ? `${base}` : base;
 }
 
@@ -291,7 +257,14 @@ async function callUpstream(model, payload, { stream, signal }) {
     return { res, cleanup };
   } catch (err) {
     cleanup();
-    throw err;
+    if (err instanceof AiError) throw err;
+    if (signal?.aborted || err.name === 'AbortError') throw err;
+    throw new AiError('تعذّر الوصول إلى خدمة Cosmos Blazar 3. تحقّق من اتصال الخادم ثم أعد المحاولة.', {
+      status: 503,
+      code: 'blazar_unavailable',
+      retryable: true,
+      upstreamDetail: err.message,
+    });
   }
 }
 
@@ -399,7 +372,7 @@ function mockAnswer(messages, mode) {
   const hasImage = Array.isArray(last?.content) && last.content.some((p) => p.type === 'image_url');
   const wantsCode = /كود|code|برمجة|javascript|python|react|sql|دالة|function/i.test(text);
   const clean = truncate(text.trim().replace(/\s+/g, ' '), 180);
-  const intro = '### وضع العرض التجريبي\n\nلا يوجد اتصال بنموذج **Gemini** في هذه البيئة، لذلك هذا رد محلي تجريبي وليس ردًا من الذكاء الاصطناعي. الواجهة وكل ميزات التطبيق تعمل، وبمجرد وضع مفتاح `GEMINI_API_KEY` صحيح في `.env` ستتحول الردود إلى النموذج الحقيقي تلقائيًا.\n\n';
+  const intro = '### وضع العرض التجريبي\n\nلا يوجد اتصال بخدمة النموذج في هذه البيئة، لذلك هذا رد محلي تجريبي وليس ردًا من الذكاء الاصطناعي. الواجهة وكل ميزات التطبيق تعمل، وبمجرد ضبط إعدادات النموذج على الخادم ستتحول الردود إلى النموذج الحقيقي تلقائيًا.\n\n';
   const echo = clean ? `**ما وصلني منك:**\n> ${clean}${text.length > 180 ? '…' : ''}\n\n` : '';
   const imageNote = hasImage ? 'وصلت الصورة المرفقة بنجاح، وسيتم تحليلها بصريًا عند تفعيل نموذج يدعم الرؤية.\n\n' : '';
   let body;
@@ -408,9 +381,9 @@ function mockAnswer(messages, mode) {
   } else if (mode === 'writing') {
     body = '**مسودة مقترحة:**\n\nنكتب اليوم خطوةً جديدة نحو مساحة عمل أهدأ: أدواتٌ تفهم لغتك، وتحترم وقتك، وتبقى بين يديك. في Cosmos نؤمن أن التقنية الجيدة لا ترفع صوتها؛ إنها فقط تجعل الأمور تسير.\n\n**بديل أقصر:**\n\nمساحة واحدة لأفكارك: اكتب، اسأل، وأنجز — بلغتك.\n\n';
   } else {
-    body = '**ماذا يعمل الآن في هذه النسخة؟**\n\n- واجهة الدردشة كاملة: بث الردود، إيقاف التوليد، إعادة التوليد، نسخ الرد، وتصدير المحادثة.\n- إرفاق الصور والملفات النصية، وتحليلها بصريًا عند تفعيل نموذج الرؤية.\n- البحث في المحادثات، الملاحظات، المهام، المكتبة، الوضعين الفاتح والداكن، ودعم الجوال.\n- حسابات Google، ورمز دخول بالبريد، وخطط الاشتراك عبر Stripe، ولوحة إدارة محمية.\n- حدود استخدام وحماية من الطلبات الآلية، مع سجلات أمنية.\n\n**الخطوة التالية:** ضع مفتاح Gemini صالحًا في `.env` ثم أعد تشغيل الخادم، وستصبح الردود حقيقية دون أي تغيير في الواجهة.\n\n';
+    body = '**ماذا يعمل الآن في هذه النسخة؟**\n\n- واجهة الدردشة كاملة: بث الردود، إيقاف التوليد، إعادة التوليد، نسخ الرد، وتصدير المحادثة.\n- إرفاق الصور والملفات النصية، وتحليلها بصريًا عند تفعيل نموذج الرؤية.\n- البحث في المحادثات، الملاحظات، المهام، المكتبة، الوضعين الفاتح والداكن، ودعم الجوال.\n- حسابات Google، ورمز دخول بالبريد، وخطط الاشتراك عبر Stripe، ولوحة إدارة محمية.\n- حدود استخدام وحماية من الطلبات الآلية، مع سجلات أمنية.\n\n**الخطوة التالية:** اضبط إعدادات النموذج على الخادم ثم أعد التشغيل، وستصبح الردود حقيقية دون أي تغيير في الواجهة.\n\n';
   }
-  return intro + echo + imageNote + body + '_هذا الرد من مزوّد العرض المحلي (mock) وليس من Gemini._';
+  return intro + echo + imageNote + body + '_هذا رد توضيحي محلي وليس من النموذج الفعلي._';
 }
 
 async function mockStream({ messages, mode, signal, onDelta }) {
@@ -441,7 +414,7 @@ async function streamChat({ messages, model, mode, system, temperature, maxToken
   } catch (err) {
     if (signal?.aborted || err.name === 'AbortError') throw err;
     if (config.ai.demoFallback) {
-      const notice = `> **تعذّر الوصول إلى Gemini من شبكة الخادم.**\n>\n> ${err.message}\n>\n> تحقّق من اتصال الخادم بالإنترنت، ومن صحة المفتاح والنموذج في \`.env\`، ثم أعد المحاولة. يمكنك متابعة تجربة الواجهة أدناه.\n\n`;
+      const notice = '> **تعذّر الوصول إلى خدمة النموذج مؤقتًا.**\n>\n> تحقّق من اتصال الخادم بالإنترنت ومن إعدادات النموذج، ثم أعد المحاولة. يمكنك متابعة تجربة الواجهة أدناه.\n\n';
       const fallback = '\n\n' + mockAnswer(messages, mode);
       let text = '';
       for (const chunk of (notice + fallback).match(/[\s\S]{1,8}/g) || []) {
@@ -499,7 +472,7 @@ async function generateImage({ prompt, signal }) {
     return { dataUrl: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`, model: 'cosmos-demo', demo: true, mimeType: 'image/svg+xml' };
   }
   if (!imageModel) {
-    const err = new AiError('توليد الصور غير مهيأ. أضف GEMINI_IMAGE_MODEL إلى .env (مثال: gemini-2.5-flash-image-preview).', { status: 503, code: 'image_not_configured' });
+    const err = new AiError('توليد الصور غير مهيأ على الخادم حاليًا.', { status: 503, code: 'image_not_configured' });
     throw err;
   }
   const payload = {
@@ -545,13 +518,13 @@ function demoImageSvg(prompt) {
   <circle cx="780" cy="240" r="140" fill="#fff" opacity=".16"/><circle cx="230" cy="760" r="200" fill="#000" opacity=".12"/>
   <text x="512" y="470" text-anchor="middle" font-family="system-ui,Segoe UI" font-size="34" fill="#ffffffcc">Cosmos · Demo Image</text>
   <text x="512" y="540" text-anchor="middle" font-family="system-ui,Segoe UI" font-size="48" font-weight="700" fill="#fff">${safe}</text>
-  <text x="512" y="610" text-anchor="middle" font-family="system-ui,Segoe UI" font-size="24" fill="#ffffffb0">صورة توضيحية محلية — فعّل GEMINI_IMAGE_MODEL لتوليد صور حقيقية</text>
+  <text x="512" y="610" text-anchor="middle" font-family="system-ui,Segoe UI" font-size="24" fill="#ffffffb0">صورة توضيحية محلية</text>
   </svg>`;
 }
 
 async function probe({ model, timeoutMs = 20000 } = {}) {
   if (isDemo()) {
-    return { ok: true, demo: true, ms: 0, text: 'وضع العرض المحلي (mock) مفعّل — لا يوجد اتصال Gemini.', model: 'cosmos-demo' };
+    return { ok: true, demo: true, ms: 0, text: 'وضع العرض المحلي مفعّل — لا توجد خدمة نموذج متصلة.', model: 'cosmos-demo' };
   }
   const started = Date.now();
   const controller = new AbortController();
@@ -582,6 +555,6 @@ async function probe({ model, timeoutMs = 20000 } = {}) {
 }
 
 module.exports = {
-  AiError, streamChat, completeChat, generateImage, listModels, resolveModel,
+  AiError, streamChat, completeChat, generateImage, resolveModel,
   systemPrompt, isDemo, mockAnswer, probe, config,
 };

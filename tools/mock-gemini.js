@@ -4,7 +4,7 @@
    التشغيل: npm run mock:gemini   ثم ضع عنوان الخادم في إعدادات الواجهة القديمة. */
 const http = require('node:http');
 
-const PORT = Number(process.env.MOCK_PORT) || 9655;
+const PORT = Number(process.env.MOCK_PORT) || 9680;
 const HOST = process.env.MOCK_HOST || '127.0.0.1';
 
 function cors(res) {
@@ -124,5 +124,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`\n  Cosmos Mock Gemini → http://${HOST}:${PORT}\n  POST /v1/chat/completions (stream supported)\n  POST /reset-session · GET /v1/models\n`);
+  console.log(`\n  محاكاة التطوير (ليست خدمة Photon) → http://${HOST}:${PORT}\n  POST /v1/chat/completions (stream supported)\n  POST /reset-session · GET /v1/models\n`);
 });

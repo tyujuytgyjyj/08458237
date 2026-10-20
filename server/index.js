@@ -8,6 +8,7 @@ const store = require('./lib/store');
 const redis = require('./lib/redis');
 const bans = require('./lib/bans');
 const security = require('./lib/security');
+const photon = require('./lib/photon');
 const sessions = require('./lib/sessions');
 const { globalLimiter, authLimiter, adminLimiter, pageLimiter } = require('./lib/rate-limit');
 const { notFound, errorHandler } = require('./lib/http');
@@ -120,10 +121,18 @@ async function start() {
   await store.init();
   await bans.refresh(true);
   await security.loadThreatList();
+  photon.health().then((hc) => {
+    if (hc.ok) console.log(`[photon] خدمة Cosmos Photon 3 متاحة (${hc.latencyMs}ms)`);
+    else console.log('[photon] خدمة Cosmos Photon 3 غير متاحة حاليًا — سيظهر تنبيه واضح عند اختيار النموذج');
+  }).catch(() => {});
+  if (config.photon.autostart && config.photon.startCommand) {
+    photon.ensureAvailable().catch((err) => console.warn('[photon] تعذّر بدء الخدمة:', err.message));
+  }
   server = app.listen(config.port, config.host, () => {
     console.log(`\n  Cosmos AI v${config.version}`);
     console.log(`  → http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.port}`);
     console.log(`  → AI provider: ${config.ai.provider}${config.ai.provider === 'gemini' ? ` (${config.ai.model})` : ''}`);
+    console.log(`  → Photon backend: ${config.photon.baseUrl} (${config.photon.model})`);
     console.log(`  → Storage: ${store.driver}${store.driver === 'postgres' ? ` (${config.db.database})` : ''}`);
     console.log(`  → Env: ${config.env}\n`);
   });

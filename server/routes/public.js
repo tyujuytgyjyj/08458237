@@ -5,6 +5,8 @@ const config = require('../config');
 const store = require('../lib/store');
 const redis = require('../lib/redis');
 const gemini = require('../lib/gemini');
+const photon = require('../lib/photon');
+const models = require('../lib/models');
 const email = require('../lib/email');
 const bans = require('../lib/bans');
 const security = require('../lib/security');
@@ -17,12 +19,20 @@ function integrationStatus() {
   const demo = gemini.isDemo();
   return [
     {
-      id: 'gemini',
-      name: 'Gemini AI',
-      configured: config.ai.hasKey && !demo,
-      status: demo ? 'demo' : config.ai.hasKey ? 'ready' : 'missing_key',
-      detail: demo ? 'مزوّد العرض المحلي (mock)' : config.ai.model,
-      action: demo ? 'ضع GEMINI_API_KEY صالحًا في .env' : null,
+      id: 'ai',
+      name: 'محرّك النماذج',
+      configured: !demo,
+      status: demo ? 'demo' : 'ready',
+      detail: demo ? 'وضع تجريبي محلي' : 'جاهز',
+      action: demo ? 'راجع إعدادات النموذج على الخادم' : null,
+    },
+    {
+      id: 'photon',
+      name: 'Cosmos Photon 3',
+      configured: photon.configured(),
+      status: photon.isAvailableCached() ? 'ready' : 'offline',
+      detail: photon.isAvailableCached() ? 'متاح' : 'غير متاح مؤقتًا',
+      action: photon.isAvailableCached() ? null : 'يتطلب خدمة النموذج المحلية',
     },
     {
       id: 'google',
@@ -45,8 +55,8 @@ function integrationStatus() {
       name: 'اشتراكات Stripe',
       configured: Boolean(config.stripe.secretKey),
       status: config.stripe.secretKey ? 'ready' : 'not_configured',
-      detail: config.stripe.secretKey ? 'Checkout جاهز' : 'أضف STRIPE_SECRET_KEY',
-      action: config.stripe.webhookSecret ? null : 'أضف STRIPE_WEBHOOK_SECRET لتفعيل Webhook',
+      detail: config.stripe.secretKey ? 'Checkout جاهز' : 'غير مهيأ',
+      action: config.stripe.webhookSecret ? null : 'Webhook غير مهيأ',
     },
     {
       id: 'database',
@@ -54,7 +64,7 @@ function integrationStatus() {
       configured: store.driver === 'postgres',
       status: store.driver === 'postgres' ? 'ready' : 'fallback',
       detail: store.driver === 'postgres' ? 'PostgreSQL' : 'تخزين ملفات محلي',
-      action: store.driver === 'postgres' ? null : 'راجع DB_HOST/DB_PASSWORD',
+      action: store.driver === 'postgres' ? null : 'تخزين ملفات محلي',
     },
     {
       id: 'redis',
@@ -62,7 +72,7 @@ function integrationStatus() {
       configured: Boolean(config.redisUrl),
       status: redis.available ? 'ready' : 'fallback',
       detail: redis.available ? 'متصل' : 'تخزين مؤقت في الذاكرة',
-      action: redis.available ? null : 'اختياري — لتوزيع الحدود بين النسخ',
+      action: null,
     },
     {
       id: 'captcha',
@@ -70,7 +80,7 @@ function integrationStatus() {
       configured: config.features.captcha,
       status: config.captcha.enforce ? (config.features.captcha ? 'ready' : 'missing_key') : 'optional',
       detail: config.captcha.enforce ? 'مفعّل إجباريًا' : 'اختياري / معطّل',
-      action: config.features.captcha ? null : 'أضف HCAPTCHA_SITE_KEY',
+      action: null,
     },
     {
       id: 'push',
@@ -85,15 +95,15 @@ function integrationStatus() {
       name: 'توليد الصور',
       configured: Boolean(config.ai.imageModel),
       status: config.ai.imageModel ? 'ready' : gemini.isDemo() ? 'demo' : 'not_configured',
-      detail: config.ai.imageModel || 'أضف GEMINI_IMAGE_MODEL',
-      action: config.ai.imageModel ? null : 'مثال: gemini-2.5-flash-image-preview',
+      detail: config.ai.imageModel ? 'جاهز' : 'غير مهيأ',
+      action: config.ai.imageModel ? null : 'راجع إعدادات الخادم',
     },
     {
       id: 'ads',
       name: 'شبكة الإعلانات',
       configured: config.features.ads,
       status: config.features.ads ? 'ready' : 'not_configured',
-      detail: process.env.AD_NETWORK_PROVIDER || 'معطّل',
+      detail: config.features.ads ? 'مهيأة' : 'معطّل',
       action: null,
     },
   ];
@@ -110,8 +120,7 @@ router.get('/api/health', (req, res) => {
     time: new Date().toISOString(),
     uptime: Math.round((Date.now() - startedAt) / 1000),
     ai: {
-      provider: gemini.isDemo() ? 'mock' : 'gemini',
-      configured: config.ai.hasKey,
+      configured: !gemini.isDemo(),
       demo: gemini.isDemo(),
     },
     storage: store.driver,
@@ -120,6 +129,7 @@ router.get('/api/health', (req, res) => {
 
 router.get('/api/status', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
+  models.refreshAvailability();
   res.json({
     ok: true,
     app: {
@@ -130,14 +140,9 @@ router.get('/api/status', (req, res) => {
       logo: '/icons/icon-192.png',
     },
     ai: {
-      provider: gemini.isDemo() ? 'mock' : 'gemini',
       demo: gemini.isDemo(),
-      keyConfigured: config.ai.hasKey,
-      model: config.ai.model,
-      fastModel: config.ai.fastModel,
-      imageModel: config.ai.imageModel || null,
-      demoFallback: config.ai.demoFallback,
-      models: gemini.listModels(),
+      images: Boolean(config.ai.imageModel),
+      models: models.list(),
     },
     features: {
       googleLogin: config.oauth.googleConfigured,

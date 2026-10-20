@@ -46,8 +46,8 @@ const oauthStateSecret = str('OAUTH_STATE_SECRET', '') || crypto.createHmac('sha
 
 const geminiBase = (str('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com')).replace(/\/+$/, '');
 const geminiModel = str('GEMINI_MODEL', 'gemini-2.5-flash');
-const geminiFast = str('GEMINI_FAST_MODEL', geminiModel);
 const geminiVision = str('GEMINI_VISION_MODEL', geminiModel);
+const deepseekBase = (str('DEEPSEEK_BASE_URL', 'http://127.0.0.1:9655')).replace(/\/+$/, '');
 const geminiFallback = str('GEMINI_FALLBACK_MODEL', '');
 const geminiFallbackChain = list('GEMINI_FALLBACK_MODEL');
 const providerEnv = str('AI_PROVIDER', '').toLowerCase();
@@ -110,7 +110,6 @@ const config = {
     apiKey: str('GEMINI_API_KEY', ''),
     baseUrl: geminiBase,
     model: geminiModel,
-    fastModel: geminiFast,
     visionModel: geminiVision,
     fallbackModel: geminiFallbackChain[0] || geminiFallback,
     fallbackModels: geminiFallbackChain,
@@ -118,6 +117,19 @@ const config = {
     timeoutMs: int('GEMINI_TIMEOUT_MS', 120000),
     demoFallback: bool('DEMO_FALLBACK', true),
     systemPrompt: str('SYSTEM_PROMPT', ''),
+  },
+  photon: {
+    baseUrl: deepseekBase,
+    apiKey: str('DEEPSEEK_API_KEY', ''),
+    model: str('DEEPSEEK_MODEL', 'deepseek-chat'),
+    visionModel: str('DEEPSEEK_VISION_MODEL', 'deepseek-flash'),
+    timeoutMs: int('DEEPSEEK_TIMEOUT_MS', 120000),
+    healthPath: str('DEEPSEEK_HEALTH_PATH', '/v1/models'),
+    healthTimeoutMs: int('DEEPSEEK_HEALTH_TIMEOUT_MS', 1500),
+    resetSession: bool('DEEPSEEK_RESET_SESSION', true),
+    autostart: bool('DEEPSEEK_AUTOSTART', false),
+    startCommand: str('DEEPSEEK_START_COMMAND', ''),
+    startWaitMs: int('DEEPSEEK_START_WAIT_MS', 12000),
   },
   db: {
     host: str('DB_HOST', ''),
