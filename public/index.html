@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cosmos — مساحة واحدة لكل أفكارك</title>
+  <meta name="description" content="Cosmos — مساعد ذكاء اصطناعي عربي للدردشة والكتابة والبرمجة وتحليل الصور والملفات. مساحة واحدة لكل أفكارك.">
+  <meta name="theme-color" content="#0c0c0e" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta property="og:title" content="Cosmos — مساحة واحدة لكل أفكارك">
+  <meta property="og:description" content="اسأل، اكتب، حلّل صورة، أو برمج — كل ذلك بلغتك.">
+  <meta property="og:type" content="website">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/assets/app.css">
+  <script src="/assets/theme-init.js"></script>
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+<div class="app">
+  <!-- ============================ الشريط الجانبي ============================ -->
+  <aside class="sidebar" id="sidebar" aria-label="القائمة الجانبية">
+    <div class="sb-top">
+      <a class="brand" href="/" aria-label="Cosmos">
+        <span class="logo-mark" data-logo></span>
+        <span>Cosmos</span>
+      </a>
+      <span class="spacer"></span>
+      <button class="icon-btn" id="btnSearchSide" data-icon="search" title="بحث في المحادثات (Ctrl+K)" aria-label="بحث"></button>
+      <button class="icon-btn" id="btnCollapse" data-icon="sidebar" title="إخفاء الشريط الجانبي" aria-label="إخفاء القائمة"></button>
+    </div>
+
+    <button class="new-chat" id="btnNew">
+      <span data-icon="plus" data-size="18"></span>
+      <span>دردشة جديدة</span>
+      <span class="kbd">Ctrl N</span>
+    </button>
+
+    <nav class="sb-nav">
+      <button class="nav-row" data-open="images"><span data-icon="image"></span>الصور</button>
+      <button class="nav-row" data-open="tasks"><span data-icon="clock"></span>المهام المجدولة</button>
+      <button class="nav-row" data-open="library"><span data-icon="library"></span>المكتبة<span class="badge-mini" id="libCount"></span></button>
+      <button class="nav-row" data-open="integrations"><span data-icon="puzzle"></span>المكونات الإضافية</button>
+      <button class="nav-row" data-open="code"><span data-icon="code"></span>Cosmos Code<span class="badge-mini hidden" id="codeOn">مفعّل</span></button>
+      <button class="nav-row" data-open="explore"><span data-icon="compass"></span>استكشاف</button>
+      <button class="nav-row" data-open="settings"><span data-icon="settings"></span>الإعدادات</button>
+
+      <div class="nav-label" id="pinnedLabel" hidden>المثبتة <span class="line"></span></div>
+      <div id="pinnedList"></div>
+
+      <div class="nav-label">المحادثات الأخيرة <span class="line"></span></div>
+      <div id="chatList"><div class="empty-note">لا توجد محادثات بعد. ابدأ بسؤال.</div></div>
+    </nav>
+
+    <div class="sb-foot">
+      <div class="usage-mini"><span>استخدام اليوم</span><b id="sbUsage">—</b></div>
+      <div class="usage-bar"><i id="sbUsageBar" style="width:0%"></i></div>
+      <button class="account-card" id="accountBtn" aria-label="الحساب">
+        <span class="avatar" id="sbAvatar">C</span>
+        <span class="account-meta">
+          <span class="nm" id="sbName">زائر</span>
+          <span class="pl" id="sbPlan">سجّل الدخول لحفظ محادثاتك</span>
+        </span>
+        <span data-icon="chevronUpDown" data-size="15"></span>
+      </button>
+      <button class="upgrade-btn" id="btnUpgrade"><span data-icon="sparkles" data-size="16"></span> احصل على Premium</button>
+    </div>
+  </aside>
+  <div class="overlay sidebar-overlay" id="overlay"></div>
+
+  <!-- ================================ الرئيسية ================================ -->
+  <main class="main">
+    <header class="topbar">
+      <div class="tb-start">
+        <button class="icon-btn only-mobile" id="btnSidebarMobile" data-icon="sidebar" aria-label="القائمة"></button>
+        <button class="icon-btn hide-sm" id="btnSidebarDesk" data-icon="sidebar" aria-label="القائمة"></button>
+        <span class="badge-demo hidden" id="demoBadge"><span data-icon="activity" data-size="12"></span> عرض تجريبي</span>
+      </div>
+      <div class="segmented" role="tablist" aria-label="عرض التطبيق">
+        <button id="segChat" class="active" role="tab" aria-selected="true">الدردشة</button>
+        <button id="segWork" role="tab" aria-selected="false">العمل</button>
+      </div>
+      <div class="tb-end">
+        <button class="ghost-btn hide-sm" id="btnFeedback" data-icon="message" title="أرسل ملاحظة">ملاحظة</button>
+        <button class="ghost-btn primary" id="btnUpgradeTop"><span data-icon="sparkles" data-size="14"></span><span class="offer-text"> Premium</span></button>
+        <button class="icon-btn" id="btnTemp" data-icon="temp" title="دردشة مؤقتة — لا تُحفظ" aria-label="دردشة مؤقتة"></button>
+      </div>
+    </header>
+
+    <div class="scroll" id="scroll">
+      <div class="thread" id="thread"></div>
+    </div>
+    <button class="scroll-down hidden" id="btnDown" data-icon="arrowDown" aria-label="الانتقال للأسفل"></button>
+
+    <div class="composer-wrap">
+      <div class="composer" id="composer">
+        <div class="attachments" id="attachments"></div>
+        <div class="composer-row">
+          <button class="icon-btn" id="btnAttach" data-icon="paperclip" title="إرفاق صورة أو ملف" aria-label="إرفاق"></button>
+          <input type="file" id="fileInput" multiple hidden accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.pdf,.txt,.md,.markdown,.json,.csv,.js,.ts,.jsx,.tsx,.py,.html,.css,.yml,.yaml,.xml,.sql,.sh,.log,.env.example,.ini,.toml,.rs,.go,.java,.c,.cpp,.h">
+          <textarea id="input" rows="1" dir="auto" placeholder="اسأل Cosmos…" aria-label="اكتب رسالتك"></textarea>
+          <div class="model-wrap">
+            <button class="model-chip" id="modelBtn" aria-haspopup="menu" aria-expanded="false">
+              <span class="dot"></span><span class="mname" id="modelName">Cosmos Blazar 3</span><span data-icon="chevronDown" data-size="13"></span>
+            </button>
+            <div class="menu hidden" id="modelMenu" role="menu"></div>
+          </div>
+          <button class="icon-btn" id="btnMic" data-icon="mic" title="الكتابة بالصوت" aria-label="تسجيل صوتي"></button>
+          <button class="send-btn" id="btnSend" aria-label="إرسال" data-icon="arrowUp" data-size="19"></button>
+        </div>
+      </div>
+      <div class="composer-meta">
+        <span class="usage-chip" id="usageChip">—</span>
+        <span class="hint" id="composerHint">قد يرتكب Cosmos أخطاء. تحقّق من المعلومات المهمة.</span>
+        <button class="usage-chip hidden" id="modeChip" title="إيقاف وضع الكود"><span data-icon="code" data-size="12"></span><b>وضع الكود</b></button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================= لوحة العمل ============================= -->
+  <aside class="workspace hidden" id="workspace" aria-label="لوحة العمل">
+    <div class="workspace-head">
+      <div class="ws-tabs" role="tablist">
+        <button class="ws-tab active" data-ws="notes">ملاحظات</button>
+        <button class="ws-tab" data-ws="library">المكتبة</button>
+        <button class="ws-tab" data-ws="tasks">المهام</button>
+        <button class="ws-tab" data-ws="log">السجل</button>
+        <button class="ws-tab" data-ws="settings">الإعدادات</button>
+      </div>
+      <button class="icon-btn sm" id="btnWsClose" data-icon="x" aria-label="إغلاق"></button>
+    </div>
+    <div class="ws-body">
+      <section class="ws-pane active" id="ws-notes">
+        <div class="ws-title">ملاحظاتك</div>
+        <div class="ws-sub">مساحة سريعة لأفكارك. تبقى محفوظة في هذا المتصفح، ويمكنك إرسال أي ملاحظة إلى الدردشة مباشرة.</div>
+        <button class="btn block" id="btnNewNote"><span data-icon="plus" data-size="15"></span> ملاحظة جديدة</button>
+        <div id="notesList" style="margin-top:12px"></div>
+      </section>
+
+      <section class="ws-pane" id="ws-library">
+        <div class="ws-title">مكتبة الأوامر</div>
+        <div class="ws-sub">احفظ الأوامر والردود التي تعود إليها كثيرًا، واستخدمها بضغطة واحدة.</div>
+        <div class="field">
+          <label for="libTitle">اسم مختصر (اختياري)</label>
+          <input class="input" id="libTitle" placeholder="مثال: بريد متابعة رسمي">
+        </div>
+        <div class="field">
+          <label for="libInput">نص الأمر</label>
+          <textarea class="textarea" id="libInput" placeholder="اكتب الأمر أو النص الذي تريد حفظه…"></textarea>
+        </div>
+        <button class="btn primary block" id="btnAddLib"><span data-icon="plus" data-size="15"></span> حفظ في المكتبة</button>
+        <div id="libraryList" style="margin-top:12px"></div>
+      </section>
+
+      <section class="ws-pane" id="ws-tasks">
+        <div class="ws-title">المهام المجدولة</div>
+        <div class="ws-sub">ذكّرني بفكرة أو مهمة في وقت محدد. تُحفظ محليًا وتظهر كإشعار عند موعدها.</div>
+        <div class="field">
+          <label for="taskText">المهمة</label>
+          <textarea class="textarea" id="taskText" style="min-height:62px" placeholder="مثال: راجع خطة المشروع"></textarea>
+        </div>
+        <div class="field">
+          <label for="taskDue">الموعد</label>
+          <input class="input" id="taskDue" type="datetime-local">
+        </div>
+        <button class="btn primary block" id="btnAddTask"><span data-icon="plus" data-size="15"></span> إضافة مهمة</button>
+        <div id="tasksList" style="margin-top:12px"></div>
+      </section>
+
+      <section class="ws-pane" id="ws-log">
+        <div class="ws-title">سجل الاتصال</div>
+        <div class="ws-sub">آخر الطلبات المرسلة من هذه الصفحة إلى الخادم — مفيد للتشخيص.</div>
+        <div class="ws-actions"><button class="btn sm" id="btnClearLog"><span data-icon="trash" data-size="13"></span> مسح السجل</button></div>
+        <div id="logList"></div>
+      </section>
+
+      <section class="ws-pane" id="ws-settings">
+        <div class="ws-title">الإعدادات</div>
+        <div class="ws-sub">خصّص تجربتك وأدر بياناتك.</div>
+        <div id="profileBox"></div>
+
+        <div class="ws-section-title">المظهر والسلوك</div>
+        <div class="settings-card">
+          <div class="toggle-row">
+            <div class="lbl"><b>الوضع الداكن</b><span>تبديل سريع بين الفاتح والداكن</span></div>
+            <button class="switch" id="setTheme" role="switch" aria-checked="true"></button>
+          </div>
+          <div class="toggle-row">
+            <div class="lbl"><b>البث المباشر</b><span>عرض الرد أثناء توليده</span></div>
+            <button class="switch" id="setStream" role="switch" aria-checked="true"></button>
+          </div>
+          <div class="toggle-row">
+            <div class="lbl"><b>إرسال سياق المحادثة</b><span>يمنح النموذج ذاكرة أفضل ضمن الجلسة</span></div>
+            <button class="switch" id="setHistory" role="switch" aria-checked="true"></button>
+          </div>
+          <div class="toggle-row">
+            <div class="lbl"><b>إشعارات المهام</b><span>إشعار من المتصفح عند حلول الموعد</span></div>
+            <button class="switch" id="setNotify" role="switch" aria-checked="false"></button>
+          </div>
+        </div>
+
+        <div class="ws-section-title">حالة الخادم والتكاملات</div>
+        <div class="btn block" id="btnRefreshStatus" style="margin-bottom:10px"><span data-icon="refresh" data-size="14"></span> تحديث الحالة</div>
+        <div class="settings-card" id="statusList"><div class="loading-line"><span class="spinner"></span> جارٍ فحص الخادم…</div></div>
+
+        <div class="ws-section-title">البيانات والخصوصية</div>
+        <div class="ws-actions">
+          <button class="btn sm" id="btnExportLocal"><span data-icon="download" data-size="13"></span> تصدير المحادثات</button>
+          <button class="btn sm" id="btnFeedback2"><span data-icon="message" data-size="13"></span> ملاحظة</button>
+          <button class="btn sm danger" id="btnClearChats"><span data-icon="trash" data-size="13"></span> حذف كل المحادثات</button>
+        </div>
+        <div class="ws-actions">
+          <button class="btn sm" id="btnOpenAccount"><span data-icon="user" data-size="13"></span> إدارة الحساب</button>
+          <a class="btn sm" id="adminLink" href="/admin" hidden><span data-icon="shield" data-size="13"></span> لوحة الإدارة</a>
+          <button class="btn sm danger" id="btnDeleteAccount"><span data-icon="logout" data-size="13"></span> حذف الحساب</button>
+        </div>
+        <p class="hint-sm" id="privacyNote">المحادثات تُحفظ في هذا المتصفح، ومزامَنة إلى الخادم عند تسجيل الدخول. الدردشة المؤقتة لا تُحفظ إطلاقًا.</p>
+        <p class="hint-sm" id="appInfo"></p>
+      </section>
+    </div>
+  </aside>
+  <div class="ws-overlay" id="wsOverlay"></div>
+</div>
+
+<!-- ================================ النوافذ ================================ -->
+<div class="modal" id="searchModal" role="dialog" aria-modal="true" aria-label="البحث">
+  <div class="search-box">
+    <div class="search-input-row">
+      <span data-icon="search" data-size="18"></span>
+      <input id="searchInput" placeholder="ابحث في محادثاتك…" autocomplete="off" aria-label="بحث">
+      <button class="icon-btn sm" id="btnSearchClose" data-icon="x" aria-label="إغلاق"></button>
+    </div>
+    <div class="search-results" id="searchResults"></div>
+    <div class="search-foot"><span><kbd>Enter</kbd> فتح</span><span><kbd>Esc</kbd> إغلاق</span></div>
+  </div>
+</div>
+
+<div class="modal" id="accountModal" role="dialog" aria-modal="true" aria-label="الحساب">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span class="m-ico" data-icon="user" data-size="20"></span>
+      <div><h2>حسابك في Cosmos</h2><p>احفظ محادثاتك، فعّل الاشتراك، وأدر بياناتك من مكان واحد.</p></div>
+      <button class="icon-btn modal-close" id="accountClose" data-icon="x" aria-label="إغلاق"></button>
+    </div>
+    <div class="modal-body" id="accountBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="upgradeModal" role="dialog" aria-modal="true" aria-label="الترقية">
+  <div class="modal-card wide">
+    <div class="modal-head">
+      <span class="m-ico" data-icon="sparkles" data-size="20"></span>
+      <div><h2>ارتقِ بتجربتك مع Cosmos</h2><p>حدود أعلى، نماذج أسرع، ومزايا إضافية — يمكنك الإلغاء في أي وقت.</p></div>
+      <button class="icon-btn modal-close" id="upgradeClose" data-icon="x" aria-label="إغلاق"></button>
+    </div>
+    <div class="modal-body" id="upgradeBody"><div class="loading-line"><span class="spinner"></span> جارٍ تحميل الخطط…</div></div>
+  </div>
+</div>
+
+<div class="modal" id="imagesModal" role="dialog" aria-modal="true" aria-label="استوديو الصور">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span class="m-ico" data-icon="image" data-size="20"></span>
+      <div><h2>استوديو الصور</h2><p>صِف ما تتخيله، ودع Cosmos يرسمه. النتائج تُعرض هنا ويمكنك تنزيلها.</p></div>
+      <button class="icon-btn modal-close" id="imageClose" data-icon="x" aria-label="إغلاق"></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="imagePrompt">وصف الصورة</label>
+        <textarea class="textarea" id="imagePrompt" placeholder="مثال: مدينة عربية مستقبلية عند الغروب، ألوان دافئة، تفاصيل سينمائية"></textarea>
+      </div>
+      <div class="ws-actions" id="imageIdeas"></div>
+      <button class="btn primary block" id="btnGenerateImage"><span data-icon="wand" data-size="15"></span> أنشئ الصورة</button>
+      <div id="imageResult"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="integrationsModal" role="dialog" aria-modal="true" aria-label="التكاملات">
+  <div class="modal-card wide">
+    <div class="modal-head">
+      <span class="m-ico" data-icon="puzzle" data-size="20"></span>
+      <div><h2>المكونات الإضافية والتكاملات</h2><p>حالة كل خدمة مرتبطة بـ Cosmos، وما يحتاجه كل تكامل ليعمل.</p></div>
+      <button class="icon-btn modal-close" id="integrationsClose" data-icon="x" aria-label="إغلاق"></button>
+    </div>
+    <div class="modal-body">
+      <div id="integrationsList"><div class="loading-line"><span class="spinner"></span> جارٍ التحميل…</div></div>
+      <div class="modal-foot"><span class="left">التغييرات تُدار من ملف <code>.env</code> على الخادم.</span><button class="btn sm" id="btnRefreshIntegrations"><span data-icon="refresh" data-size="13"></span> تحديث</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="exploreModal" role="dialog" aria-modal="true" aria-label="استكشاف">
+  <div class="modal-card wide">
+    <div class="modal-head">
+      <span class="m-ico" data-icon="compass" data-size="20"></span>
+      <div><h2>استكشف ما يمكنك فعله</h2><p>أوامر جاهزة لتجربة سريعة — اختر واحدة وابدأ.</p></div>
+      <button class="icon-btn modal-close" id="exploreClose" data-icon="x" aria-label="إغلاق"></button>
+    </div>
+    <div class="modal-body"><div class="modal-grid" id="exploreGrid"></div></div>
+  </div>
+</div>
+
+<div class="modal" id="feedbackModal" role="dialog" aria-modal="true" aria-label="ملاحظة">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span class="m-ico" data-icon="message" data-size="20"></span>
+      <div><h2>أرسل ملاحظة</h2><p>رأيك يصل إلى فريق Cosmos مباشرة.</p></div>
+      <button class="icon-btn modal-close" id="feedbackClose" data-icon="x" aria-label="إغلاق"></button>
+    </div>
+    <div class="modal-body">
+      <div id="fbStatus"></div>
+      <div class="field"><label for="fbName">الاسم (اختياري)</label><input class="input" id="fbName" autocomplete="name"></div>
+      <div class="field"><label for="fbEmail">البريد (اختياري)</label><input class="input" id="fbEmail" type="email" dir="ltr" autocomplete="email"></div>
+      <div class="field"><label for="fbMessage">ملاحظتك</label><textarea class="textarea" id="fbMessage" placeholder="ما الذي أعجبك؟ وما الذي نطوّره؟"></textarea></div>
+      <button class="btn primary block" id="btnSendFeedback"><span data-icon="send" data-size="15"></span> إرسال الملاحظة</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="confirmModal" role="dialog" aria-modal="true" aria-label="تأكيد">
+  <div class="modal-card narrow">
+    <div class="modal-head">
+      <span class="m-ico" data-icon="alert" data-size="20"></span>
+      <div><h2 id="confirmTitle">تأكيد</h2><p id="confirmMessage"></p></div>
+      <button class="icon-btn modal-close" id="confirmClose" data-icon="x" aria-label="إغلاق"></button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="confirmCancel">إلغاء</button>
+      <button class="btn danger" id="confirmOk">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="askModal" role="dialog" aria-modal="true" aria-label="إدخال">
+  <div class="modal-card narrow">
+    <div class="modal-head">
+      <span class="m-ico" data-icon="edit" data-size="20"></span>
+      <div><h2 id="askTitle">تعديل</h2><p id="askLabel"></p></div>
+      <button class="icon-btn modal-close" id="askClose" data-icon="x" aria-label="إغلاق"></button>
+    </div>
+    <div class="modal-body"><input class="input" id="askInput" maxlength="120"></div>
+    <div class="modal-foot"><button class="btn" id="askCancel">إلغاء</button><button class="btn primary" id="askOk">حفظ</button></div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox"><img id="lbImg" alt="صورة مكبّرة"></div>
+<div class="dropzone" id="dropzone"><div><span data-icon="image" data-size="34" style="margin:0 auto 10px;display:block"></span>أفلت الصور أو الملفات هنا لإرفاقها</div></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+</body>
+</html>

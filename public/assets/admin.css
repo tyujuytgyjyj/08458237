@@ -1,0 +1,71 @@
+/* لوحة إدارة Cosmos */
+body.admin-body { display: block; overflow: auto; min-height: 100vh; background: var(--bg); }
+.admin-login { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.login-card { width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line-strong); border-radius: 22px; padding: 26px; box-shadow: var(--shadow); }
+.login-card .logo-mark { width: 46px; height: 46px; border-radius: 14px; margin-bottom: 16px; }
+.login-card h1 { font-size: 21px; margin-bottom: 6px; }
+.login-card p { font-size: 12.5px; color: var(--muted); line-height: 1.8; margin-bottom: 20px; }
+.login-card .field { margin-top: 14px; }
+.admin-shell { display: flex; min-height: 100vh; }
+.admin-side { width: 248px; flex: 0 0 248px; background: var(--sidebar); border-inline-end: 1px solid var(--line); padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; }
+.admin-brand { display: flex; align-items: center; gap: 9px; font-weight: 700; padding: 4px 8px 16px; }
+.admin-nav { display: grid; gap: 3px; }
+.admin-nav button { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 11px; border-radius: 9px; color: var(--text-soft); font-size: 13px; text-align: start; }
+.admin-nav button:hover { background: var(--hover); color: var(--text); }
+.admin-nav button.active { background: var(--hover-strong); color: var(--text); font-weight: 600; }
+.admin-side .foot { margin-top: auto; border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 5px; }
+.admin-main { flex: 1; min-width: 0; padding: 22px 26px 40px; }
+.admin-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.admin-head h1 { font-size: 21px; font-weight: 700; }
+.admin-head p { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.admin-head .actions { margin-inline-start: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 11px; margin-bottom: 20px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.stat span { font-size: 11px; color: var(--muted); display: block; }
+.stat b { font-size: 26px; font-weight: 750; letter-spacing: -0.8px; display: block; margin-top: 4px; }
+.stat small { font-size: 10.5px; color: var(--faint); display: block; margin-top: 3px; }
+.admin-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+.admin-card h2 { font-size: 15px; margin-bottom: 4px; }
+.admin-card .sub { font-size: 11px; color: var(--muted); margin-bottom: 14px; line-height: 1.7; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table.admin-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 720px; }
+.admin-table th, .admin-table td { padding: 9px 11px; text-align: start; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.admin-table th { background: var(--bg-soft); color: var(--muted); font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+.admin-table tr:last-child td { border-bottom: 0; }
+.admin-table tr:hover td { background: var(--hover); }
+.admin-table .em { direction: ltr; text-align: start; color: var(--text-soft); }
+.admin-table .actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.mini-select { background: var(--elevated); border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; font-size: 11px; color: var(--text); }
+.pill { font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 20px; display: inline-block; }
+.pill.green { background: var(--green-soft); color: var(--green); }
+.pill.red { background: var(--red-soft); color: var(--red); }
+.pill.muted { background: var(--hover); color: var(--muted); }
+.pill.amber { background: var(--amber-soft); color: var(--amber); }
+.filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.filters .input { max-width: 320px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end; }
+.form-grid .field { margin-bottom: 0; }
+.form-grid .btn { height: 38px; }
+.event-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 12px; }
+.event-row:last-child { border-bottom: 0; }
+.event-row .type { font-weight: 650; color: var(--text); min-width: 140px; }
+.event-row .meta { color: var(--faint); font-size: 10.5px; margin-inline-start: auto; white-space: nowrap; }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.kv div { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; background: var(--bg-soft); }
+.kv b { display: block; color: var(--muted); font-size: 10px; font-weight: 600; margin-bottom: 3px; }
+.kv code { font-family: var(--mono); font-size: 10.5px; color: var(--text-soft); word-break: break-all; }
+.pre { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-family: var(--mono); font-size: 10.5px; white-space: pre-wrap; word-break: break-word; direction: ltr; text-align: left; max-height: 320px; overflow: auto; }
+.log-line { font-family: var(--mono); font-size: 10.5px; padding: 5px 0; border-bottom: 1px dashed var(--line); color: var(--text-soft); direction: ltr; text-align: left; word-break: break-all; }
+.empty-admin { color: var(--faint); font-size: 12px; padding: 18px; text-align: center; }
+@media (max-width: 820px) {
+  .admin-shell { flex-direction: column; }
+  .admin-side { position: static; width: 100%; height: auto; flex: none; border-inline-end: 0; border-bottom: 1px solid var(--line); }
+  .admin-nav { grid-template-columns: repeat(2, 1fr); }
+  .admin-side .foot { display: flex; margin-top: 8px; }
+  .admin-main { padding: 16px; }
+}
+
+/* عناصر صغيرة */
+.btn.xs { height: 26px; padding: 0 8px; font-size: 10.5px; border-radius: 7px; }
+.avatar.sm { width: 26px; height: 26px; font-size: 11px; border-radius: 8px; }
+.form-error { background: var(--red-soft); color: var(--red); border: 1px solid rgba(255,107,107,.25); border-radius: 9px; padding: 8px 11px; font-size: 11.5px; margin-top: 10px; }

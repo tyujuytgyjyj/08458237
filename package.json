@@ -1,0 +1,41 @@
+{
+  "name": "cosmos-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cosmos — واجهة دردشة عربية كاملة (Node.js + HTML) مع Blazar 3 وPhoton 3 وOAuth وStripe ولوحة إدارة",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test tests/*.test.js",
+    "mock:gemini": "node tools/mock-gemini.js",
+    "local:model": "node tools/local-model-service.js --port 9655",
+    "check": "node --check server/index.js && node scripts/check-frontend.js",
+    "smoke": "node tools/ui-smoke.js",
+    "smoke:flows": "node tools/ui-flows.js"
+  },
+  "keywords": [
+    "cosmos",
+    "gemini",
+    "chat",
+    "arabic",
+    "express"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "compression": "^1.7.4",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "helmet": "^7.2.0",
+    "ioredis": "^5.4.2",
+    "nodemailer": "^6.10.0",
+    "pg": "^8.13.3"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
