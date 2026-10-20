@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>لوحة إدارة Cosmos</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/admin.css">
+  <script src="/assets/theme-init.js"></script>
+  <script src="/assets/admin.js" defer></script>
+</head>
+<body class="admin-body">
+  <!-- تسجيل الدخول -->
+  <div class="admin-login" id="loginView">
+    <div class="login-card">
+      <span class="logo-mark" data-logo></span>
+      <h1>لوحة إدارة Cosmos</h1>
+      <p>أدخل مفتاح الإدارة السري (<code>RESTRICTION_ADMIN_SECRET</code>) للوصول إلى المستخدمين والاستخدام وسجلات الأمان. يُحفظ المفتاح في هذه الجلسة فقط.</p>
+      <form id="loginForm">
+        <div class="field">
+          <label for="adminSecret">مفتاح الإدارة</label>
+          <input class="input" id="adminSecret" type="password" dir="ltr" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <div id="loginError"></div>
+        <button class="btn primary block" type="submit" style="margin-top:14px" id="loginBtn">دخول</button>
+      </form>
+      <p style="margin-top:16px"><a href="/">← العودة إلى التطبيق</a></p>
+    </div>
+  </div>
+
+  <!-- اللوحة -->
+  <div class="admin-shell hidden" id="appView">
+    <aside class="admin-side">
+      <div class="admin-brand"><span class="logo-mark" data-logo></span> Cosmos Admin</div>
+      <nav class="admin-nav">
+        <button class="active" data-tab="overview"><span data-icon="activity"></span> نظرة عامة</button>
+        <button data-tab="users"><span data-icon="user"></span> المستخدمون</button>
+        <button data-tab="security"><span data-icon="shield"></span> الحظر والأمان</button>
+        <button data-tab="events"><span data-icon="clock"></span> الأحداث</button>
+        <button data-tab="diagnostics"><span data-icon="key"></span> التشخيص</button>
+      </nav>
+      <div class="foot">
+        <button class="admin-nav" id="themeBtn" style="width:100%"><span data-icon="moon"></span> تبديل المظهر</button>
+        <a class="admin-nav" href="/" style="width:100%"><span data-icon="external"></span> التطبيق</a>
+        <button class="admin-nav" id="logoutBtn" style="width:100%"><span data-icon="logout"></span> خروج</button>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <div class="admin-head">
+        <div><h1 id="pageTitle">نظرة عامة</h1><p id="pageSub">حالة Cosmos وإحصاءات الاستخدام</p></div>
+        <div class="actions">
+          <button class="btn sm" id="refreshBtn"><span data-icon="refresh" data-size="14"></span> تحديث</button>
+          <button class="btn sm" id="exportBtn"><span data-icon="download" data-size="14"></span> تصدير المستخدمين</button>
+        </div>
+      </div>
+
+      <section id="tab-overview">
+        <div class="stats" id="statsGrid"><div class="loading-line"><span class="spinner"></span> جارٍ التحميل…</div></div>
+        <div class="admin-card"><h2>المستخدمون حسب الخطة</h2><div class="kv" id="planStats"></div></div>
+        <div class="admin-card"><h2>أحدث الأحداث</h2><div id="recentEvents"></div></div>
+      </section>
+
+      <section id="tab-users" class="hidden">
+        <div class="admin-card">
+          <h2>المستخدمون</h2>
+          <div class="sub">ابحث بالبريد أو الاسم أو المعرّف. يمكنك تغيير الخطة، إيقاف الحساب، أو حظره.</div>
+          <div class="filters"><input class="input" id="userQuery" placeholder="ابحث…"><button class="btn sm" id="userSearchBtn">بحث</button><span class="hint-sm" id="userCount"></span></div>
+          <div class="table-wrap"><table class="admin-table"><thead><tr><th>المستخدم</th><th>الخطة</th><th>الحالة</th><th>آخر دخول</th><th>إجراءات</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="tab-security" class="hidden">
+        <div class="admin-card">
+          <h2>حظر عنوان أو مستخدم</h2>
+          <div class="sub">الحظر يُطبّق فورًا على الخادم ويُخزّن حتى انتهاء المدة.</div>
+          <form id="banForm" class="form-grid">
+            <div class="field"><label for="banIp">IP (اختياري)</label><input class="input" id="banIp" dir="ltr" placeholder="1.2.3.4"></div>
+            <div class="field"><label for="banUser">معرّف المستخدم (اختياري)</label><input class="input" id="banUser" dir="ltr" placeholder="user-id"></div>
+            <div class="field"><label for="banHours">المدة (ساعات)</label><input class="input" id="banHours" type="number" min="1" max="8760" value="24"></div>
+            <div class="field"><label for="banReason">السبب</label><input class="input" id="banReason" placeholder="استهلاك آلي…"></div>
+            <button class="btn primary" type="submit">حظر</button>
+          </form>
+        </div>
+        <div class="admin-card"><h2>الحظر النشط</h2><div class="table-wrap"><table class="admin-table"><thead><tr><th>النوع</th><th>القيمة</th><th>حتى</th><th>السبب</th><th></th></tr></thead><tbody id="bansBody"></tbody></table></div></div>
+        <div class="admin-card"><h2>حماية الوصول البرمجي (Anti-CLI)</h2><div class="sub">سجل محاولات الوصول المرفوضة، وقائمة عناوين IP المحجوبة خارجيًا.</div><div class="actions" style="margin-bottom:10px"><button class="btn sm" id="reloadBlocklistBtn"><span data-icon="refresh" data-size="13"></span> إعادة تحميل قائمة الحجب</button></div><div id="securityLog"></div></div>
+      </section>
+
+      <section id="tab-events" class="hidden">
+        <div class="admin-card"><h2>سجل الأحداث</h2><div class="sub">آخر 120 حدثًا: تسجيلات الدخول، المحادثات، الاشتراكات، وإجراءات الإدارة.</div><div id="eventsList"></div></div>
+      </section>
+
+      <section id="tab-diagnostics" class="hidden">
+        <div class="admin-card">
+          <h2>تشخيص الاتصال</h2><div class="sub">فحص مباشر لمزوّد الذكاء الاصطناعي والتخزين والبريد والتكاملات.</div>
+          <div class="actions" style="margin-bottom:12px"><button class="btn sm primary" id="probeBtn"><span data-icon="activity" data-size="14"></span> فحص Gemini الآن</button><button class="btn sm" id="diagReloadBtn"><span data-icon="refresh" data-size="14"></span> تحديث البيانات</button></div>
+          <div id="diagResult"></div>
+        </div>
+        <div class="admin-card">
+          <h2>اختبار البريد</h2><div class="sub">أرسل رسالة اختبار للتأكد من إعدادات SMTP.</div>
+          <div class="form-grid"><div class="field"><label for="testEmailTo">إلى</label><input class="input" id="testEmailTo" type="email" dir="ltr" placeholder="you@example.com"></div><button class="btn" id="testEmailBtn"><span data-icon="mail" data-size="14"></span> إرسال</button></div>
+          <div id="emailTestResult" style="margin-top:10px"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toasts" id="toasts"></div>
+</body>
+</html>

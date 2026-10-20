@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+!.env.example
+data/*
+!data/.gitkeep
+security_logs/*
+!security_logs/.gitkeep
+*.log
+.DS_Store
+coverage/
+.arena/
